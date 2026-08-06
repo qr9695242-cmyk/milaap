@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { effectiveRole, hasAtLeastRole, setUserRole, ROLES } from "@/lib/roles";
-import { listenPendingRecharges, approveRecharge, rejectRecharge } from "@/lib/wallet";
+import {
+  listenPendingRecharges,
+  approveRecharge,
+  rejectRecharge,
+  listenPendingWithdrawals,
+  approveWithdraw,
+  rejectWithdraw,
+} from "@/lib/wallet";
 import { listenActiveRooms, endRoom } from "@/lib/rooms";
 import { listenPendingReports, resolveReport } from "@/lib/moderation";
 
@@ -13,6 +20,7 @@ export default function AdminPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [recharges, setRecharges] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [reports, setReports] = useState([]);
   const [busyId, setBusyId] = useState(null);
@@ -33,9 +41,11 @@ export default function AdminPage() {
     if (!isAdmin) return;
     const unsub1 = listenPendingRecharges(setRecharges);
     const unsub2 = listenActiveRooms(setRooms);
+    const unsub3 = listenPendingWithdrawals(setWithdrawals);
     return () => {
       unsub1();
       unsub2();
+      unsub3();
     };
   }, [isAdmin]);
 
@@ -78,6 +88,24 @@ export default function AdminPage() {
     setBusyId(req.id);
     try {
       await rejectRecharge(req.id);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleApproveWithdraw(req) {
+    setBusyId(req.id);
+    try {
+      await approveWithdraw(req.id);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleRejectWithdraw(req) {
+    setBusyId(req.id);
+    try {
+      await rejectWithdraw(req);
     } finally {
       setBusyId(null);
     }
@@ -145,6 +173,49 @@ export default function AdminPage() {
                         className="rounded-full bg-panel2 px-3 py-1.5 text-xs font-semibold text-neon-pink ring-1 ring-neon-pink/30 disabled:opacity-60"
                       >
                         Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {isAdmin && (
+        <section className="mt-8">
+          <h2 className="font-display text-sm font-bold text-ink">
+            Pending Withdrawals ({withdrawals.length})
+          </h2>
+          {withdrawals.length === 0 ? (
+            <p className="mt-3 text-xs text-mist">Nothing pending.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {withdrawals.map((w) => (
+                <div key={w.id} className="rounded-xl bg-panel p-3 ring-1 ring-white/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{w.name}</p>
+                      <p className="text-xs text-mist">
+                        ◆ {w.diamonds} diamonds → Rs {w.payoutRs} · {w.method}
+                      </p>
+                      <p className="text-xs text-mist">Account: {w.accountNumber}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApproveWithdraw(w)}
+                        disabled={busyId === w.id}
+                        className="rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-60"
+                      >
+                        Mark Paid
+                      </button>
+                      <button
+                        onClick={() => handleRejectWithdraw(w)}
+                        disabled={busyId === w.id}
+                        className="rounded-full bg-panel2 px-3 py-1.5 text-xs font-semibold text-neon-pink ring-1 ring-neon-pink/30 disabled:opacity-60"
+                      >
+                        Reject & Refund
                       </button>
                     </div>
                   </div>

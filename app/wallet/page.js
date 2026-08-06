@@ -59,12 +59,20 @@ export default function WalletPage() {
             <p className="text-[10px] text-ink/70">Earned from gifts received</p>
           </div>
         </div>
-        <Link
-          href="/wallet/recharge"
-          className="mt-4 block rounded-full bg-white/95 py-2.5 text-center text-sm font-semibold text-void"
-        >
-          Recharge Coins
-        </Link>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Link
+            href="/wallet/recharge"
+            className="rounded-full bg-white/95 py-2.5 text-center text-sm font-semibold text-void"
+          >
+            Recharge Coins
+          </Link>
+          <Link
+            href="/wallet/withdraw"
+            className="rounded-full bg-void/30 py-2.5 text-center text-sm font-semibold text-ink ring-1 ring-white/30"
+          >
+            Withdraw Diamonds
+          </Link>
+        </div>
       </section>
 
       <section className="mx-5 mt-6">
