@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Dark theme (default) — RGB triplets so Tailwind's /opacity modifiers work */
+  --color-void: 11 7 19;      /* near-black base */
+  --color-panel: 22 15 38;    /* card surfaces */
+  --color-panel2: 30 21 51;   /* elevated surfaces */
+  --color-ink: 244 241 251;   /* primary text */
+  --color-mist: 158 147 181;  /* muted text */
+}
+
+html.light {
+  /* Light theme overrides — toggled by lib/ThemeContext.js */
+  --color-void: 247 245 251;
+  --color-panel: 255 255 255;
+  --color-panel2: 237 233 246;
+  --color-ink: 20 15 31;
+  --color-mist: 107 99 133;
+}
+
+html, body {
+  background-color: rgb(var(--color-void));
+  color: rgb(var(--color-ink));
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* visible keyboard focus, kept subtle but real */
+:focus-visible {
+  outline: 2px solid #8B5CF6;
+  outline-offset: 2px;
+}
+
+.glow-text {
+  background: linear-gradient(135deg, #FF3B7F 0%, #8B5CF6 55%, #FF8A3D 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
