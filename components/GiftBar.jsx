@@ -1,103 +1,93 @@
-"use client";
+import { useState } from "react";
+import { GIFT_CATALOG } from "../lib/gifts";
 
-import { useState, useEffect } from "react";
-import { GIFT_CATALOG, sendGift } from "@/lib/gifts";
-
-/**
- * Two modes:
- *  - Fixed target (live-room): pass toUid + toName, picker is skipped.
- *  - Multi target (audio-room, seat-based): pass `targets` (array of
- *    {uid, name}, i.e. everyone else currently seated) and a chip picker
- *    renders above the gifts so any seated user can be gifted, not just
- *    a hardcoded host.
- */
-export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, targets, myCoins }) {
+export default function GiftBar({ targets = [], activeTarget, onSend }) {
+  const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(null);
-  const [error, setError] = useState("");
-  const [selectedUid, setSelectedUid] = useState(toUid || targets?.[0]?.uid || "");
 
-  useEffect(() => {
-    // agar list badal jaye (koi seat chhod de) aur selected target ab
-    // available na ho, to pehle wale valid target par wapas gir jao
-    if (targets && !targets.some((t) => t.uid === selectedUid)) {
-      setSelectedUid(targets[0]?.uid || "");
-    }
-  }, [targets, selectedUid]);
+  const target = activeTarget || targets?.[0];
 
-  const activeTarget = targets
-    ? targets.find((t) => t.uid === selectedUid)
-    : { uid: toUid, name: toName };
-
-  async function handleSend(gift) {
-    setError("");
-    if (!activeTarget?.uid) {
-      setError("Pehle kisi ko gift karne ke liye select karein.");
-      return;
-    }
-    if (myCoins < gift.cost) {
-      setError("Not enough coins — recharge from Wallet.");
-      return;
-    }
-    setSending(gift.id);
+  async function sendGift(gift) {
+    if (!target || sending) return;
     try {
-      await sendGift(roomId, {
-        fromUid,
-        fromName,
-        toUid: activeTarget.uid,
-        toName: activeTarget.name,
-        gift,
-      });
-    } catch (err) {
-      setError(err.message || "Could not send gift.");
+      setSending(gift.id);
+      await onSend?.(gift, target);
+      setOpen(false);
     } finally {
       setSending(null);
     }
   }
 
-  if (targets && targets.length === 0) {
-    return (
-      <div className="border-t border-white/5 px-3 py-2">
-        <p className="text-[11px] text-mist">
-          Gift bhejne ke liye room mein koi aur seated ho tabhi option aayega.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="border-t border-white/5 px-3 py-2">
-      {targets && (
-        <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
-          {targets.map((t) => (
-            <button
-              key={t.uid}
-              onClick={() => setSelectedUid(t.uid)}
-              className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ring-1 ${
-                selectedUid === t.uid
-                  ? "bg-glow-gradient text-ink ring-transparent"
-                  : "bg-panel text-mist ring-white/10"
-              }`}
-            >
-              {t.name}
-            </button>
-          ))}
+    <>
+      {/* Compact live control, like a social-live gift button */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Open gifts"
+        className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 via-fuchsia-500 to-orange-400 text-2xl shadow-[0_0_22px_rgba(255,45,155,.4)] ring-2 ring-white/20"
+      >
+        🎁
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-[2px]"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-t-3xl border border-white/10 bg-[#111323] p-4 pb-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />
+
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-extrabold text-white">Send a Gift</h3>
+                <p className="text-[11px] text-white/50">
+                  To {target?.name || "Live Host"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-full bg-white/10 px-3 py-1 text-sm text-white/70"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              {GIFT_CATALOG.map((gift) => (
+                <button
+                  key={gift.id}
+                  type="button"
+                  onClick={() => sendGift(gift)}
+                  disabled={sending === gift.id}
+                  className={`flex min-h-[82px] flex-col items-center justify-center rounded-2xl border p-2 transition active:scale-95 ${
+                    gift.id === "live_gift_250"
+                      ? "border-pink-400/60 bg-gradient-to-b from-pink-500/20 to-orange-400/10 shadow-[0_0_18px_rgba(255,45,155,.18)]"
+                      : "border-white/10 bg-white/[0.04]"
+                  } disabled:opacity-50`}
+                >
+                  <span className="text-3xl">{gift.icon}</span>
+                  <span className="mt-1 text-[10px] font-bold text-white">
+                    {gift.name}
+                  </span>
+                  <span className="text-[10px] font-bold text-cyan-300">
+                    💎 {gift.cost}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between rounded-2xl bg-black/20 px-3 py-2">
+              <span className="text-[11px] text-white/50">Choose a gift to send</span>
+              <span className="text-[11px] font-bold text-pink-300">250 Gift available</span>
+            </div>
+          </div>
         </div>
       )}
-      {error && <p className="mb-1 text-[11px] text-neon-pink">{error}</p>}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {GIFT_CATALOG.map((gift) => (
-          <button
-            key={gift.id}
-            onClick={() => handleSend(gift)}
-            disabled={sending === gift.id}
-            className="flex min-w-[64px] flex-col items-center rounded-xl bg-panel px-2 py-2 ring-1 ring-white/5 disabled:opacity-50"
-          >
-            <span className="text-xl">{gift.icon}</span>
-            <span className="mt-1 text-[10px] text-ink">{gift.name}</span>
-            <span className="text-[10px] text-gold">● {gift.cost}</span>
-          </button>
-        ))}
-      </div>
-    </div>
+    </>
   );
 }

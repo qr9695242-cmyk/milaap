@@ -72,52 +72,32 @@ function FrameGlyph({ kind }) {
   );
 }
 
-const VEHICLE_IMAGES = {
-  veh_bike: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Bauhaus_bicycle%2C_Groningen_%282019%29.jpg",
-  veh_scooter: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Electric_scooter_%2851950182293%29.jpg",
-  veh_skateboard: "https://commons.wikimedia.org/wiki/Special:Redirect/file/SkateBoard_2429.jpg",
-  veh_hoverboard: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Hover_board_%28hovering%29.jpg",
-  veh_bicycle: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Vintage_Bicycles.jpg",
-  veh_sedan: "https://commons.wikimedia.org/wiki/Special:Redirect/file/1997-1999_Mazda_626_%28GF%29_Classic_sedan_01.jpg",
-  veh_cruiser: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Cruiser_Motorcycle.jpg",
-  veh_speedboat: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Speed_boat_%281%29.jpg",
-  veh_convertible: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sports_car_%2814931023217%29.jpg",
-  veh_atv: "https://commons.wikimedia.org/wiki/Special:Redirect/file/ATV_%28All-Terrain_Vehicles%29.jpg",
-  veh_snowmobile: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Snowmobile_%285316247616%29.jpg",
-  veh_sports: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Ferrari_.jpg",
-  veh_yacht: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Luxury_yacht.jpg",
-  veh_racebike: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Cruiser_Motorcycle.jpg",
-  veh_armored: "https://commons.wikimedia.org/wiki/Special:Redirect/file/SsangYong_Chairman_CW600_W200_Classic_Black_%282%29.jpg",
-  veh_jetski: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Jet_ski.jpg",
-  veh_heli: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Helicopter.jpg",
-  veh_monstertruck: "https://commons.wikimedia.org/wiki/Special:Redirect/file/ATV_%28All-Terrain_Vehicles%29.jpg",
-  veh_jet: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Private_Jet_%2829791079234%29.jpg",
-  veh_supercar: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Ferrari_LaFerrari_1.jpg",
-  veh_limo: "https://commons.wikimedia.org/wiki/Special:Redirect/file/SsangYong_Chairman_CW600_W200_Classic_Black_%282%29.jpg",
-  veh_icechariot: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Private_Jet_%2829791079234%29.jpg",
-  veh_dragonmount: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Cruiser_Motorcycle.jpg",
-  veh_griffinmount: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Cruiser_Motorcycle.jpg",
-  veh_rocket: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Private_Jet_%2829791079234%29.jpg",
-  veh_ufo: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Helicopters.jpg",
-  veh_chariot: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Private_Jet_%2829791079234%29.jpg",
-  veh_phoenixflyer: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Private_Jet_%2829791079234%29.jpg",
-  veh_throne: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Luxury_yacht.jpg",
-};
-
-function VehiclePhoto({ id }) {
-  const src = VEHICLE_IMAGES[id] || VEHICLE_IMAGES.veh_bike;
+function VehicleGlyph({ id }) {
+  const type = id.includes("bike") || id.includes("bicycle") || id.includes("scooter") || id.includes("snowmobile") ? "bike" : id.includes("boat") || id.includes("yacht") || id.includes("jetski") ? "boat" : id.includes("jet") || id.includes("rocket") || id.includes("ufo") ? "air" : id.includes("heli") ? "heli" : id.includes("dragon") || id.includes("griffin") || id.includes("phoenix") ? "mount" : "car";
   return (
-    <div className="vehicle-photo" aria-hidden="true">
-      <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" />
-      <span className="vehicle-photo-shine" />
-    </div>
+    <svg viewBox="0 0 120 80" className="h-full w-full" aria-hidden="true">
+      <defs><linearGradient id="body" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fff"/><stop offset=".35" stopColor="#6ee7f2"/><stop offset="1" stopColor="#8b5cf6"/></linearGradient></defs>
+      {type === "car" && <><path d="M18 50 30 30h45l18 20v15H18Z" fill="url(#body)" stroke="#fff" strokeWidth="2"/><path d="m38 32 8-11h19l9 11" fill="none" stroke="#fff" strokeWidth="4"/><circle cx="35" cy="65" r="9" fill="#111827" stroke="#d7eaff" strokeWidth="3"/><circle cx="78" cy="65" r="9" fill="#111827" stroke="#d7eaff" strokeWidth="3"/></>}
+      {type === "bike" && <><circle cx="33" cy="58" r="13" fill="none" stroke="#d7eaff" strokeWidth="4"/><circle cx="86" cy="58" r="13" fill="none" stroke="#d7eaff" strokeWidth="4"/><path d="M33 58 48 36h17l21 22M48 36l-8-9m25 9 8-12" fill="none" stroke="url(#body)" strokeWidth="5" strokeLinecap="round"/></>}
+      {type === "boat" && <><path d="M18 49h84l-13 16H31Z" fill="url(#body)" stroke="#fff" strokeWidth="2"/><path d="M42 49V29h30v20M52 29v-9h11v9" fill="none" stroke="#fff" strokeWidth="4"/><path d="M22 70c15-8 30 8 45 0s30 8 35 0" fill="none" stroke="#5ed4e8" strokeWidth="4"/></>}
+      {type === "air" && <><path d="M60 13 70 43l32 14-3 7-36-9-36 9-3-7 32-14Z" fill="url(#body)" stroke="#fff" strokeWidth="2"/><path d="M52 43 42 24h12l6 19m0 0 10-19H58" fill="none" stroke="#fff" strokeWidth="3"/></>}
+      {type === "heli" && <><path d="M31 45h55c7 0 12 5 12 11s-5 9-12 9H37c-10 0-17-5-17-12s5-8 11-8Z" fill="url(#body)" stroke="#fff" strokeWidth="2"/><path d="M58 45V30m-25 2h50M45 30h28" stroke="#fff" strokeWidth="4" strokeLinecap="round"/><path d="M85 57h20" stroke="#fff" strokeWidth="4"/></>}
+      {type === "mount" && <><path d="M18 66 40 27l14 22 13-25 35 42H18Z" fill="url(#body)" stroke="#fff" strokeWidth="3"/><circle cx="72" cy="40" r="4" fill="#fff"/><path d="M79 41h10" stroke="#fff" strokeWidth="3"/></>}
+    </svg>
   );
 }
 
 export default function DecorationArt({ type = "vehicle", id = "", className = "" }) {
-  return type === "frame" ? (
-    <FrameGlyph kind={frameSymbols[id] || "ring"} />
-  ) : (
-    <VehiclePhoto id={id} />
+  if (type === "frame") {
+    return <FrameGlyph kind={frameSymbols[id] || "ring"} />;
+  }
+
+  return (
+    <img
+      src={`/vehicle-frames/${id}.jpg`}
+      alt=""
+      className={`h-full w-full object-cover ${className}`}
+      loading="lazy"
+    />
   );
 }
