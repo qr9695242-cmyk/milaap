@@ -23,6 +23,7 @@ export default function AdminPage() {
   const [withdrawals, setWithdrawals] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [reports, setReports] = useState([]);
+  const [listenerErrors, setListenerErrors] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [roleTargetUid, setRoleTargetUid] = useState("");
   const [roleToGrant, setRoleToGrant] = useState(ROLES.MODERATOR);
@@ -39,9 +40,11 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    const unsub1 = listenPendingRecharges(setRecharges);
-    const unsub2 = listenActiveRooms(setRooms);
-    const unsub3 = listenPendingWithdrawals(setWithdrawals);
+    const setErr = (key) => (err) =>
+      setListenerErrors((prev) => ({ ...prev, [key]: err?.message || String(err) }));
+    const unsub1 = listenPendingRecharges(setRecharges, setErr("recharges"));
+    const unsub2 = listenActiveRooms(setRooms, setErr("rooms"));
+    const unsub3 = listenPendingWithdrawals(setWithdrawals, setErr("withdrawals"));
     return () => {
       unsub1();
       unsub2();
@@ -51,7 +54,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!isModerator) return;
-    return listenPendingReports(setReports);
+    return listenPendingReports(setReports, (err) =>
+      setListenerErrors((prev) => ({ ...prev, reports: err?.message || String(err) }))
+    );
   }, [isModerator]);
 
   async function handleGrantRole(e) {
@@ -123,6 +128,7 @@ export default function AdminPage() {
     <main className="min-h-screen bg-void px-5 pb-16 pt-6">
       <div className="flex items-center justify-between">
         <div>
+          <Link href="/profile" className="text-lg text-ink/80">←</Link>
           <h1 className="font-display text-xl font-extrabold text-ink">Admin Panel</h1>
           <p className="text-xs text-mist">
             Signed in as {user.email} · role: {role}
@@ -143,6 +149,12 @@ export default function AdminPage() {
           <h2 className="font-display text-sm font-bold text-ink">
             Pending Recharges ({recharges.length})
           </h2>
+          {listenerErrors.recharges && (
+            <p className="mt-2 text-xs text-neon-pink">
+              ⚠ Load nahi ho saka: {listenerErrors.recharges}. Agar "index" ka
+              zikar ho to console (F12) mein Firestore ka link click karein.
+            </p>
+          )}
           {recharges.length === 0 ? (
             <p className="mt-3 text-xs text-mist">Nothing pending.</p>
           ) : (
@@ -188,6 +200,11 @@ export default function AdminPage() {
           <h2 className="font-display text-sm font-bold text-ink">
             Pending Withdrawals ({withdrawals.length})
           </h2>
+          {listenerErrors.withdrawals && (
+            <p className="mt-2 text-xs text-neon-pink">
+              ⚠ Load nahi ho saka: {listenerErrors.withdrawals}
+            </p>
+          )}
           {withdrawals.length === 0 ? (
             <p className="mt-3 text-xs text-mist">Nothing pending.</p>
           ) : (
@@ -231,6 +248,11 @@ export default function AdminPage() {
           <h2 className="font-display text-sm font-bold text-ink">
             Live Rooms ({rooms.length})
           </h2>
+          {listenerErrors.rooms && (
+            <p className="mt-2 text-xs text-neon-pink">
+              ⚠ Load nahi ho saka: {listenerErrors.rooms}
+            </p>
+          )}
           {rooms.length === 0 ? (
             <p className="mt-3 text-xs text-mist">Nothing live right now.</p>
           ) : (
@@ -263,6 +285,11 @@ export default function AdminPage() {
         <h2 className="font-display text-sm font-bold text-ink">
           Pending Reports ({reports.length})
         </h2>
+        {listenerErrors.reports && (
+          <p className="mt-2 text-xs text-neon-pink">
+            ⚠ Load nahi ho saka: {listenerErrors.reports}
+          </p>
+        )}
         {reports.length === 0 ? (
           <p className="mt-3 text-xs text-mist">Nothing to review.</p>
         ) : (

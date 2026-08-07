@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { listenRoom, endRoom, takeSeat, leaveSeat, toggleSeatMute } from "@/lib/rooms";
-import { createAgoraClient, createMicTrack, AGORA_APP_ID } from "@/lib/agora";
+import { createAgoraClient, createMicTrack, fetchAgoraToken, AGORA_APP_ID } from "@/lib/agora";
 import SeatGrid from "@/components/SeatGrid";
 import LiveChat from "@/components/LiveChat";
 import GiftBar from "@/components/GiftBar";
@@ -56,11 +56,14 @@ export default function AudioRoomPage() {
           delete remoteAudioRef.current[remoteUser.uid];
         });
 
-        await client.join(AGORA_APP_ID, String(roomId), null, user.uid);
+        const token = await fetchAgoraToken(String(roomId), user.uid);
+        if (cancelled) return;
+        await client.join(AGORA_APP_ID, String(roomId), token, user.uid);
         if (cancelled) return;
       } catch (err) {
         console.error(err);
-        setError("Could not connect to audio. Check your Agora App ID.");
+        const detail = err?.message || err?.code || "unknown error";
+        setError(`Could not connect to audio (${detail}).`);
       }
     }
 
@@ -131,9 +134,14 @@ export default function AudioRoomPage() {
   return (
     <main className="flex min-h-screen flex-col bg-void">
       <header className="flex items-center justify-between px-4 py-3">
-        <div>
-          <p className="font-display text-sm font-bold text-ink">{room.title}</p>
-          <p className="text-xs text-mist">Hosted by {room.hostName}</p>
+        <div className="flex items-center gap-3">
+          <button onClick={handleEndOrLeave} aria-label="Back" className="text-lg text-ink/80">
+            ←
+          </button>
+          <div>
+            <p className="font-display text-sm font-bold text-ink">{room.title}</p>
+            <p className="text-xs text-mist">Hosted by {room.hostName}</p>
+          </div>
         </div>
         <button
           onClick={handleEndOrLeave}
@@ -155,16 +163,15 @@ export default function AudioRoomPage() {
         <SeatGrid seats={room.seats || []} myUid={user.uid} onSeatTap={handleSeatTap} />
       </div>
 
-      {!isHost && (
-        <GiftBar
-          roomId={String(roomId)}
-          fromUid={user.uid}
-          fromName={profile?.displayName || "User"}
-          toUid={room.hostUid}
-          toName={room.hostName}
-          myCoins={profile?.coins ?? 0}
-        />
-      )}
+      <GiftBar
+        roomId={String(roomId)}
+        fromUid={user.uid}
+        fromName={profile?.displayName || "User"}
+        targets={(room.seats || [])
+          .filter((s) => s.uid && s.uid !== user.uid)
+          .map((s) => ({ uid: s.uid, name: s.name }))}
+        myCoins={profile?.coins ?? 0}
+      />
 
       {mySeat && (
         <div className="mt-4 flex justify-center">

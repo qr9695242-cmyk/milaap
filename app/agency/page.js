@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { createAgency, joinAgencyByCode, leaveAgency, listenAgency, listenAgencyMembers } from "@/lib/agency";
 import BottomNav from "@/components/BottomNav";
@@ -86,7 +87,8 @@ export default function AgencyPage() {
   return (
     <main className="min-h-screen bg-void pb-24">
       <header className="px-5 pt-6">
-        <h1 className="font-display text-xl font-extrabold text-ink">Agency</h1>
+        <Link href="/profile" className="text-lg text-ink/80">←</Link>
+        <h1 className="mt-2 font-display text-xl font-extrabold text-ink">Agency</h1>
         <p className="text-xs text-mist">Group hosts together and track their earnings.</p>
       </header>
 

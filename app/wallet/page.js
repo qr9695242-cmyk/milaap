@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
-import { listenMyRecharges } from "@/lib/wallet";
+import { listenMyRecharges, exchangeDiamondsToCoins, diamondsToCoins } from "@/lib/wallet";
+import { MIN_EXCHANGE_DIAMONDS } from "@/lib/config";
 import BottomNav from "@/components/BottomNav";
 
 const STATUS_STYLES = {
@@ -17,6 +18,10 @@ export default function WalletPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [recharges, setRecharges] = useState([]);
+  const [exchangeAmount, setExchangeAmount] = useState("");
+  const [exchangeBusy, setExchangeBusy] = useState(false);
+  const [exchangeError, setExchangeError] = useState("");
+  const [exchangeSuccess, setExchangeSuccess] = useState("");
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -27,6 +32,30 @@ export default function WalletPage() {
     const unsub = listenMyRecharges(user.uid, setRecharges);
     return () => unsub();
   }, [user]);
+
+  async function handleExchange() {
+    setExchangeError("");
+    setExchangeSuccess("");
+    const diamonds = parseInt(exchangeAmount, 10);
+    if (!diamonds || diamonds <= 0) {
+      setExchangeError("Diamonds ki valid amount likhein.");
+      return;
+    }
+    if (diamonds > (profile?.diamonds ?? 0)) {
+      setExchangeError("Itni diamonds aapke paas nahi hain.");
+      return;
+    }
+    setExchangeBusy(true);
+    try {
+      const { coinsGained } = await exchangeDiamondsToCoins(user.uid, diamonds);
+      setExchangeSuccess(`${diamonds} diamonds → ${coinsGained} coins mil gaye!`);
+      setExchangeAmount("");
+    } catch (err) {
+      setExchangeError(err.message || "Exchange nahi ho saka.");
+    } finally {
+      setExchangeBusy(false);
+    }
+  }
 
   if (loading || !user) {
     return (
@@ -73,6 +102,40 @@ export default function WalletPage() {
             Withdraw Diamonds
           </Link>
         </div>
+      </section>
+
+      <section className="mx-5 mt-4 rounded-2xl bg-panel p-5 ring-1 ring-white/5">
+        <h2 className="font-display text-sm font-bold text-ink">
+          ◆ Diamonds → ● Coins
+        </h2>
+        <p className="mt-1 text-[11px] text-mist">
+          1 diamond = {diamondsToCoins(1)} coins · Minimum {MIN_EXCHANGE_DIAMONDS} diamonds
+        </p>
+        <div className="mt-3 flex gap-2">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={MIN_EXCHANGE_DIAMONDS}
+            value={exchangeAmount}
+            onChange={(e) => setExchangeAmount(e.target.value)}
+            placeholder={`e.g. ${MIN_EXCHANGE_DIAMONDS}`}
+            className="w-full rounded-xl bg-panel2 px-3 py-2.5 text-sm text-ink ring-1 ring-white/10 focus:outline-none focus:ring-white/30"
+          />
+          <button
+            onClick={handleExchange}
+            disabled={exchangeBusy}
+            className="shrink-0 rounded-xl bg-glow-gradient px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-50"
+          >
+            {exchangeBusy ? "…" : "Exchange"}
+          </button>
+        </div>
+        {exchangeAmount && !isNaN(parseInt(exchangeAmount, 10)) && (
+          <p className="mt-2 text-[11px] text-mist">
+            = {diamondsToCoins(parseInt(exchangeAmount, 10) || 0)} coins
+          </p>
+        )}
+        {exchangeError && <p className="mt-2 text-[11px] text-neon-pink">{exchangeError}</p>}
+        {exchangeSuccess && <p className="mt-2 text-[11px] text-emerald-400">{exchangeSuccess}</p>}
       </section>
 
       <section className="mx-5 mt-6">

@@ -10,6 +10,7 @@ export default function RoomsPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [rooms, setRooms] = useState([]);
+  const [roomsError, setRoomsError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
@@ -19,7 +20,9 @@ export default function RoomsPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    const unsub = listenActiveRooms(setRooms);
+    const unsub = listenActiveRooms(setRooms, (err) =>
+      setRoomsError(err?.message || "Rooms load nahi ho sakay.")
+    );
     return () => unsub();
   }, []);
 
@@ -63,6 +66,14 @@ export default function RoomsPage() {
           + Go Live
         </button>
       </header>
+
+      {roomsError && (
+        <p className="mx-5 mt-3 rounded-xl bg-panel p-3 text-xs text-neon-pink ring-1 ring-neon-pink/20">
+          Rooms load nahi ho sakay: {roomsError} — agar "index" ka zikar ho to
+          browser console (F12) khol kar Firestore ka diya hua link click
+          karein, index ban jayega.
+        </p>
+      )}
 
       <RoomSection title="Live Streams" rooms={liveRooms} kind="live" />
       <RoomSection title="Audio Rooms" rooms={audioRooms} kind="audio" />

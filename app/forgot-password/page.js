@@ -28,7 +28,8 @@ export default function ForgotPasswordPage() {
   return (
     <main className="flex min-h-screen flex-col justify-center bg-void px-6">
       <div className="mx-auto w-full max-w-sm">
-        <h1 className="font-display text-2xl font-extrabold text-ink">
+        <Link href="/login" className="text-lg text-ink/80">←</Link>
+        <h1 className="mt-2 font-display text-2xl font-extrabold text-ink">
           Reset Password
         </h1>
         <p className="mt-2 text-sm text-mist">

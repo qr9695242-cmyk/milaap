@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { RECHARGE_PACKAGES, submitRechargeRequest } from "@/lib/wallet";
 import { SUPPORT_CONFIG } from "@/lib/config";
@@ -81,7 +82,8 @@ export default function RechargePage() {
 
   return (
     <main className="min-h-screen bg-void px-5 pb-16 pt-6">
-      <h1 className="font-display text-xl font-extrabold text-ink">
+      <Link href="/wallet" className="text-lg text-ink/80">←</Link>
+      <h1 className="mt-2 font-display text-xl font-extrabold text-ink">
         Recharge Coins
       </h1>
 

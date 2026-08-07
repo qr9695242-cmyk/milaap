@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { listenFamily, contributeToFamily, leaveFamily, familyLevelForDiamonds } from "@/lib/family";
 import BottomNav from "@/components/BottomNav";
@@ -57,7 +58,8 @@ export default function FamilyDetailPage() {
   return (
     <main className="min-h-screen bg-void pb-24">
       <section className="bg-glow-gradient px-5 pb-6 pt-8">
-        <h1 className="font-display text-xl font-extrabold text-ink">{family.name}</h1>
+        <Link href="/family" className="text-lg text-ink/80">←</Link>
+        <h1 className="mt-2 font-display text-xl font-extrabold text-ink">{family.name}</h1>
         <p className="mt-1 text-xs text-ink/80">
           Level {family.level} · ◆ {family.totalDiamonds}
           {nextLevelAt ? ` · ${nextLevelAt - family.totalDiamonds} to next level` : " · Max level"}

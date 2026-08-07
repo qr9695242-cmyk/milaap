@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { listenFamilyLeaderboard, createFamily, joinFamily } from "@/lib/family";
 import BottomNav from "@/components/BottomNav";
@@ -59,7 +60,10 @@ export default function FamilyBrowsePage() {
   return (
     <main className="min-h-screen bg-void pb-24">
       <header className="flex items-center justify-between px-5 pt-6">
-        <h1 className="font-display text-xl font-extrabold text-ink">Families</h1>
+        <div className="flex items-center gap-3">
+          <Link href="/profile" className="text-lg text-ink/80">←</Link>
+          <h1 className="font-display text-xl font-extrabold text-ink">Families</h1>
+        </div>
         <button
           onClick={() => setShowCreate(true)}
           className="rounded-full bg-glow-gradient px-4 py-2 text-xs font-semibold text-ink shadow-glow"

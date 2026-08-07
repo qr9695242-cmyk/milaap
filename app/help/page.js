@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { SUPPORT_CONFIG } from "@/lib/config";
 import BottomNav from "@/components/BottomNav";
@@ -24,7 +25,8 @@ export default function HelpPage() {
 
   return (
     <main className="min-h-screen bg-void px-5 pb-24 pt-6">
-      <h1 className="font-display text-xl font-extrabold text-ink">Help & Support</h1>
+      <Link href="/profile" className="text-lg text-ink/80">←</Link>
+      <h1 className="mt-2 font-display text-xl font-extrabold text-ink">Help & Support</h1>
       <p className="mt-1 text-sm text-mist">
         Kisi bhi masle ke liye humein contact karein.
       </p>

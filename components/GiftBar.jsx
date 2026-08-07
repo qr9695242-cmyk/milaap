@@ -1,21 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GIFT_CATALOG, sendGift } from "@/lib/gifts";
 
-export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, myCoins }) {
+/**
+ * Two modes:
+ *  - Fixed target (live-room): pass toUid + toName, picker is skipped.
+ *  - Multi target (audio-room, seat-based): pass `targets` (array of
+ *    {uid, name}, i.e. everyone else currently seated) and a chip picker
+ *    renders above the gifts so any seated user can be gifted, not just
+ *    a hardcoded host.
+ */
+export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, targets, myCoins }) {
   const [sending, setSending] = useState(null);
   const [error, setError] = useState("");
+  const [selectedUid, setSelectedUid] = useState(toUid || targets?.[0]?.uid || "");
+
+  useEffect(() => {
+    // agar list badal jaye (koi seat chhod de) aur selected target ab
+    // available na ho, to pehle wale valid target par wapas gir jao
+    if (targets && !targets.some((t) => t.uid === selectedUid)) {
+      setSelectedUid(targets[0]?.uid || "");
+    }
+  }, [targets, selectedUid]);
+
+  const activeTarget = targets
+    ? targets.find((t) => t.uid === selectedUid)
+    : { uid: toUid, name: toName };
 
   async function handleSend(gift) {
     setError("");
+    if (!activeTarget?.uid) {
+      setError("Pehle kisi ko gift karne ke liye select karein.");
+      return;
+    }
     if (myCoins < gift.cost) {
       setError("Not enough coins — recharge from Wallet.");
       return;
     }
     setSending(gift.id);
     try {
-      await sendGift(roomId, { fromUid, fromName, toUid, toName, gift });
+      await sendGift(roomId, {
+        fromUid,
+        fromName,
+        toUid: activeTarget.uid,
+        toName: activeTarget.name,
+        gift,
+      });
     } catch (err) {
       setError(err.message || "Could not send gift.");
     } finally {
@@ -23,8 +54,35 @@ export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, myCo
     }
   }
 
+  if (targets && targets.length === 0) {
+    return (
+      <div className="border-t border-white/5 px-3 py-2">
+        <p className="text-[11px] text-mist">
+          Gift bhejne ke liye room mein koi aur seated ho tabhi option aayega.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="border-t border-white/5 px-3 py-2">
+      {targets && (
+        <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+          {targets.map((t) => (
+            <button
+              key={t.uid}
+              onClick={() => setSelectedUid(t.uid)}
+              className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ring-1 ${
+                selectedUid === t.uid
+                  ? "bg-glow-gradient text-ink ring-transparent"
+                  : "bg-panel text-mist ring-white/10"
+              }`}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
       {error && <p className="mb-1 text-[11px] text-neon-pink">{error}</p>}
       <div className="flex gap-2 overflow-x-auto pb-1">
         {GIFT_CATALOG.map((gift) => (

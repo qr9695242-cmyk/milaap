@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { VIP_TIERS, vipLevelForSpend, nextVipTier } from "@/lib/vip";
 import BottomNav from "@/components/BottomNav";
@@ -35,7 +36,8 @@ export default function VipPage() {
         className="px-5 pb-8 pt-10"
         style={{ background: `linear-gradient(135deg, ${current.color}55, #0B0713)` }}
       >
-        <p className="text-xs text-mist">Your tier</p>
+        <Link href="/profile" className="text-lg text-ink/80">←</Link>
+        <p className="mt-2 text-xs text-mist">Your tier</p>
         <h1 className="font-display text-2xl font-extrabold text-ink">{current.name}</h1>
         <p className="mt-1 text-xs text-mist">Lifetime recharge: Rs {spend}</p>
 

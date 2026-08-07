@@ -53,7 +53,10 @@ export default function NotificationsPage() {
   return (
     <main className="min-h-screen bg-void pb-24">
       <header className="flex items-center justify-between px-5 pt-6">
-        <h1 className="font-display text-xl font-extrabold text-ink">Notifications</h1>
+        <div className="flex items-center gap-3">
+          <Link href="/" className="text-lg text-ink/80">←</Link>
+          <h1 className="font-display text-xl font-extrabold text-ink">Notifications</h1>
+        </div>
         {items.some((n) => !n.read) && (
           <button
             onClick={() => markAllAsRead(user.uid, items)}

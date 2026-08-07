@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { listenRoom, endRoom } from "@/lib/rooms";
-import { createAgoraClient, createCameraTrack, createMicTrack, AGORA_APP_ID } from "@/lib/agora";
+import { createAgoraClient, createCameraTrack, createMicTrack, fetchAgoraToken, AGORA_APP_ID } from "@/lib/agora";
 import LiveChat from "@/components/LiveChat";
 import GiftBar from "@/components/GiftBar";
 import GiftFeed from "@/components/GiftFeed";
@@ -56,8 +56,9 @@ export default function LiveRoomPage() {
           }
         });
 
-        // App ID-only auth (dev mode) — see lib/agora.js for production token note
-        await client.join(AGORA_APP_ID, String(roomId), null, user.uid);
+        const token = await fetchAgoraToken(String(roomId), user.uid);
+        if (cancelled) return;
+        await client.join(AGORA_APP_ID, String(roomId), token, user.uid);
         if (cancelled) return;
 
         if (isHost) {
@@ -71,7 +72,8 @@ export default function LiveRoomPage() {
         setJoined(true);
       } catch (err) {
         console.error(err);
-        setError("Could not connect to the stream. Check your Agora App ID.");
+        const detail = err?.message || err?.code || "unknown error";
+        setError(`Could not connect to the stream (${detail}).`);
       }
     }
 
@@ -110,9 +112,14 @@ export default function LiveRoomPage() {
   return (
     <main className="flex min-h-screen flex-col bg-void">
       <header className="flex items-center justify-between px-4 py-3">
-        <div>
-          <p className="font-display text-sm font-bold text-ink">{room.title}</p>
-          <p className="text-xs text-mist">Hosted by {room.hostName}</p>
+        <div className="flex items-center gap-3">
+          <button onClick={handleEndOrLeave} aria-label="Back" className="text-lg text-ink/80">
+            ←
+          </button>
+          <div>
+            <p className="font-display text-sm font-bold text-ink">{room.title}</p>
+            <p className="text-xs text-mist">Hosted by {room.hostName}</p>
+          </div>
         </div>
         <button
           onClick={handleEndOrLeave}
