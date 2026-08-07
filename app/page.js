@@ -26,7 +26,7 @@ const BANNERS = [
 const QUICK_LINKS = [
   { href: "/leaderboard", label: "Ranking", emoji: "🏆", grad: "from-emerald-400/90 to-teal-500/90" },
   { href: "/family", label: "Family", emoji: "🏠", grad: "from-amber-400/90 to-orange-500/90" },
-  { href: "/profile", label: "CP / Friend", emoji: "💞", grad: "from-pink-400/90 to-fuchsia-500/90" },
+  { href: "/profile/friends", label: "CP / Friend", emoji: "💞", grad: "from-pink-400/90 to-fuchsia-500/90" },
 ];
 
 const CATEGORIES = ["Popular", "Live", "Audio Room"];

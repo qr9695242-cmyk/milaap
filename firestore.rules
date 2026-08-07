@@ -87,6 +87,50 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // CP requests — either side of the request can read it; only the
+    // sender can create, only the recipient can accept/decline (update).
+    match /cpRequests/{reqId} {
+      allow read: if request.auth != null &&
+        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
+      allow create: if request.auth != null && request.resource.data.fromUid == request.auth.uid;
+      allow update: if request.auth != null && resource.data.toUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // CP pairs — id is "{uid1}_{uid2}" (sorted). Either partner can read;
+    // creation happens via acceptCpRequest (recipient accepting) and
+    // either partner can delete (break up).
+    match /cpPairs/{pairId} {
+      allow read: if request.auth != null &&
+        (resource.data.uid1 == request.auth.uid || resource.data.uid2 == request.auth.uid || isAdmin());
+      allow create: if request.auth != null &&
+        (request.resource.data.uid1 == request.auth.uid || request.resource.data.uid2 == request.auth.uid);
+      allow delete: if request.auth != null &&
+        (resource.data.uid1 == request.auth.uid || resource.data.uid2 == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
+    // Friend requests — same pattern as CP requests
+    match /friendRequests/{reqId} {
+      allow read: if request.auth != null &&
+        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
+      allow create: if request.auth != null && request.resource.data.fromUid == request.auth.uid;
+      allow update: if request.auth != null && resource.data.toUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Friendships — id is "{uid1}_{uid2}" (sorted). Either friend can read
+    // or remove; created by the recipient accepting a friend request.
+    match /friendships/{pairId} {
+      allow read: if request.auth != null &&
+        (resource.data.uid1 == request.auth.uid || resource.data.uid2 == request.auth.uid || isAdmin());
+      allow create: if request.auth != null &&
+        (request.resource.data.uid1 == request.auth.uid || request.resource.data.uid2 == request.auth.uid);
+      allow delete: if request.auth != null &&
+        (resource.data.uid1 == request.auth.uid || resource.data.uid2 == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
     // Blocks — id is "{blockerId}_{blockedId}"; only the blocker can see/manage their own list
     match /blocks/{edgeId} {
       allow read: if request.auth != null && (resource.data.blockerId == request.auth.uid || isAdmin());

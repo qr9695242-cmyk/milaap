@@ -10,14 +10,32 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
+import { useAuth } from "@/lib/AuthContext";
+import { isInAppBrowser } from "@/lib/inAppBrowser";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [inAppWarning, setInAppWarning] = useState(false);
+
+  useEffect(() => {
+    setInAppWarning(isInAppBrowser());
+  }, []);
+
+  // Fallback #1: if AuthContext already picked up the signed-in user
+  // (it listens with onAuthStateChanged, which is more reliable across
+  // redirects than getRedirectResult on this specific page load), just
+  // navigate home. This covers the case where getRedirectResult() below
+  // silently misses the result — the account still gets created by
+  // AuthContext, we just weren't leaving the login page.
+  useEffect(() => {
+    if (user) router.replace("/");
+  }, [user, router]);
 
   // Mobile browsers (Safari, in-app webviews) block/kill popups a lot of
   // the time — that's what was causing the silent "Something went wrong"
@@ -45,7 +63,12 @@ export default function LoginPage() {
         }
         router.replace("/");
       } catch (err) {
+        // Log the real reason to the console even when we show a friendly
+        // message — "silent failure" bugs are almost always visible here.
+        console.error("Google redirect sign-in failed:", err);
         if (!cancelled) setError(friendlyError(err.code));
+      } finally {
+        if (!cancelled) setGoogleBusy(false);
       }
     })();
     return () => {
@@ -69,12 +92,19 @@ export default function LoginPage() {
 
   async function handleGoogle() {
     setError("");
+    if (isInAppBrowser()) {
+      setError(
+        "Google sign-in doesn't work inside this in-app browser. Tap the ⋯ / share menu and choose \"Open in Chrome\" or \"Open in Safari\", then try again."
+      );
+      return;
+    }
     setGoogleBusy(true);
     try {
       // Redirects away from the page — result is handled in the
       // getRedirectResult() effect above once the user comes back.
       await signInWithRedirect(auth, googleProvider);
     } catch (err) {
+      console.error("Google redirect sign-in failed to start:", err);
       setError(friendlyError(err.code));
       setGoogleBusy(false);
     }
@@ -98,6 +128,11 @@ export default function LoginPage() {
           <GoogleIcon />
           {googleBusy ? "Signing in…" : "Continue with Google"}
         </button>
+        {inAppWarning && (
+          <p className="mt-2 text-center text-[11px] text-gold">
+            ⚠️ You're in an in-app browser — Google sign-in may not work here. Open this link in Chrome/Safari for best results.
+          </p>
+        )}
 
         <div className="mt-5 flex items-center gap-3">
           <div className="h-px flex-1 bg-white/10" />
