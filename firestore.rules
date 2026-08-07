@@ -167,16 +167,6 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // PK Battles — either participating host can update the live score/status
-    match /pkBattles/{battleId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null &&
-        (request.resource.data.hostAId == request.auth.uid || request.resource.data.hostBId == request.auth.uid);
-      allow update: if request.auth != null &&
-        (resource.data.hostAId == request.auth.uid || resource.data.hostBId == request.auth.uid);
-      allow delete: if false;
-    }
-
     // Families — leader manages settings; any signed-in member can update
     // only the members list (join/leave) or totalDiamonds (contribute)
     match /families/{familyId} {

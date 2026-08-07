@@ -12,7 +12,6 @@ import ThemeToggle from "@/components/ThemeToggle";
 // Placeholder rooms — Phase 2 me ye Firestore/Agora se live data se replace hoga
 const DEMO_ROOMS = [
   { id: "r1", title: "Late Night Chill", host: "Ayesha", viewers: 812, tag: "Live" },
-  { id: "r2", title: "PK Battle Arena", host: "Zain vs Hamza", viewers: 1420, tag: "Battle" },
   { id: "r3", title: "Music Lounge", host: "DJ Noor", viewers: 356, tag: "Audio" },
   { id: "r4", title: "Game Night", host: "Team Falcon", viewers: 209, tag: "Live" },
 ];
@@ -64,7 +63,7 @@ export default function HomePage() {
           Go Live in seconds
         </p>
         <p className="mt-1 text-sm text-ink/80">
-          Start streaming, open an audio room, or challenge someone to a PK battle.
+          Start streaming or open an audio room and connect live.
         </p>
         <Link
           href="/rooms"

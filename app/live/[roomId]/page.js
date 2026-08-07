@@ -4,12 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { listenRoom, endRoom } from "@/lib/rooms";
-import { listenActiveBattleForRoom } from "@/lib/pkbattle";
 import { createAgoraClient, createCameraTrack, createMicTrack, AGORA_APP_ID } from "@/lib/agora";
 import LiveChat from "@/components/LiveChat";
 import GiftBar from "@/components/GiftBar";
 import GiftFeed from "@/components/GiftFeed";
-import PkBattlePanel from "@/components/PkBattlePanel";
 
 export default function LiveRoomPage() {
   const { roomId } = useParams();
@@ -20,7 +18,6 @@ export default function LiveRoomPage() {
   const [joined, setJoined] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [error, setError] = useState("");
-  const [activeBattle, setActiveBattle] = useState(null);
 
   const clientRef = useRef(null);
   const localTracksRef = useRef({ cam: null, mic: null });
@@ -32,11 +29,6 @@ export default function LiveRoomPage() {
 
   useEffect(() => {
     const unsub = listenRoom(roomId, setRoom);
-    return () => unsub();
-  }, [roomId]);
-
-  useEffect(() => {
-    const unsub = listenActiveBattleForRoom(String(roomId), setActiveBattle);
     return () => unsub();
   }, [roomId]);
 
@@ -152,8 +144,6 @@ export default function LiveRoomPage() {
         )}
       </div>
 
-      <PkBattlePanel room={room} roomId={String(roomId)} isHost={isHost} activeBattle={activeBattle} />
-
       {!isHost && (
         <GiftBar
           roomId={String(roomId)}
@@ -162,8 +152,6 @@ export default function LiveRoomPage() {
           toUid={room.hostUid}
           toName={room.hostName}
           myCoins={profile?.coins ?? 0}
-          activeBattle={activeBattle}
-          battleSide={activeBattle?.roomAId === String(roomId) ? "A" : "B"}
         />
       )}
 

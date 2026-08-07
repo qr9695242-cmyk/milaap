@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { GIFT_CATALOG, sendGift } from "@/lib/gifts";
-import { addBattleScore } from "@/lib/pkbattle";
 
-export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, myCoins, activeBattle, battleSide }) {
+export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, myCoins }) {
   const [sending, setSending] = useState(null);
   const [error, setError] = useState("");
 
@@ -17,9 +16,6 @@ export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, myCo
     setSending(gift.id);
     try {
       await sendGift(roomId, { fromUid, fromName, toUid, toName, gift });
-      if (activeBattle && battleSide) {
-        await addBattleScore(activeBattle.id, battleSide, gift.cost);
-      }
     } catch (err) {
       setError(err.message || "Could not send gift.");
     } finally {
