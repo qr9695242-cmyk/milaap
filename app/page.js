@@ -33,7 +33,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       {/* Header */}
       <header className="flex items-center justify-between px-5 pt-6">
         <div>

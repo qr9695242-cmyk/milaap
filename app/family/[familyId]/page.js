@@ -56,7 +56,7 @@ export default function FamilyDetailPage() {
   const isLeader = family.leaderId === user.uid;
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       <section className="bg-glow-gradient px-5 pb-6 pt-8">
         <Link href="/family" className="text-lg text-ink/80">←</Link>
         <h1 className="mt-2 font-display text-xl font-extrabold text-ink">{family.name}</h1>

@@ -51,7 +51,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       <header className="flex items-center justify-between px-5 pt-6">
         <div className="flex items-center gap-3">
           <Link href="/" className="text-lg text-ink/80">←</Link>

@@ -62,7 +62,7 @@ export default function PublicProfilePage() {
   };
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       <header className="flex items-center justify-between px-5 pt-6">
         <Link href="/search" className="text-lg text-ink/80">←</Link>
         <div className="relative">

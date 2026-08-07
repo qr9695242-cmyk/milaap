@@ -31,7 +31,7 @@ export default function VipPage() {
     : 100;
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       <section
         className="px-5 pb-8 pt-10"
         style={{ background: `linear-gradient(135deg, ${current.color}55, #0B0713)` }}

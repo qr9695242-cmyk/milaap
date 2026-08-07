@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
@@ -17,6 +18,40 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+
+  // Mobile browsers (Safari, in-app webviews) block/kill popups a lot of
+  // the time — that's what was causing the silent "Something went wrong"
+  // error. signInWithRedirect sends the user to Google and back instead
+  // of opening a popup, then we pick the result up here on return.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (!result || cancelled) return;
+        const userRef = doc(db, "users", result.user.uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          await setDoc(userRef, {
+            displayName: result.user.displayName || "User",
+            email: result.user.email,
+            coins: 0,
+            diamonds: 0,
+            totalRechargedRs: 0,
+            vipLevel: 0,
+            role: "user",
+            createdAt: serverTimestamp(),
+          });
+        }
+        router.replace("/");
+      } catch (err) {
+        if (!cancelled) setError(friendlyError(err.code));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -36,26 +71,11 @@ export default function LoginPage() {
     setError("");
     setGoogleBusy(true);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const userRef = doc(db, "users", result.user.uid);
-      const snap = await getDoc(userRef);
-      if (!snap.exists()) {
-        // Naya Google user — same shape jaisi signup form banata hai
-        await setDoc(userRef, {
-          displayName: result.user.displayName || "User",
-          email: result.user.email,
-          coins: 0,
-          diamonds: 0,
-          totalRechargedRs: 0,
-          vipLevel: 0,
-          role: "user",
-          createdAt: serverTimestamp(),
-        });
-      }
-      router.replace("/");
+      // Redirects away from the page — result is handled in the
+      // getRedirectResult() effect above once the user comes back.
+      await signInWithRedirect(auth, googleProvider);
     } catch (err) {
       setError(friendlyError(err.code));
-    } finally {
       setGoogleBusy(false);
     }
   }
@@ -155,6 +175,8 @@ function friendlyError(code) {
     "auth/invalid-credential": "Email or password is incorrect.",
     "auth/too-many-requests": "Too many attempts. Try again later.",
     "auth/popup-closed-by-user": "Google sign-in cancelled.",
+    "auth/unauthorized-domain":
+      "This site isn't authorized for Google sign-in yet — add it in Firebase Console → Authentication → Settings → Authorized domains.",
   };
   return map[code] || "Something went wrong. Please try again.";
 }

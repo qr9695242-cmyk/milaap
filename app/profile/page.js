@@ -36,7 +36,7 @@ export default function ProfilePage() {
   const hostTier = hostLevelForDiamonds(profile?.diamonds);
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       <section className="bg-glow-gradient px-5 pb-8 pt-10">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">

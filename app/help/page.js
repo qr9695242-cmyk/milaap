@@ -24,7 +24,7 @@ export default function HelpPage() {
   }
 
   return (
-    <main className="min-h-screen bg-void px-5 pb-24 pt-6">
+    <main className="min-h-screen bg-void px-5 pb-28 pt-6">
       <Link href="/profile" className="text-lg text-ink/80">←</Link>
       <h1 className="mt-2 font-display text-xl font-extrabold text-ink">Help & Support</h1>
       <p className="mt-1 text-sm text-mist">

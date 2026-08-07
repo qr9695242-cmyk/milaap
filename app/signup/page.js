@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
@@ -20,31 +21,46 @@ export default function SignupPage() {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
 
+  // See app/login/page.js for why this is a redirect instead of a popup.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (!result || cancelled) return;
+        const userRef = doc(db, "users", result.user.uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          await setDoc(userRef, {
+            uid: result.user.uid,
+            displayName: result.user.displayName || "User",
+            email: result.user.email,
+            avatar: "",
+            coins: 0,
+            diamonds: 0,
+            vipLevel: 0,
+            totalRechargedRs: 0,
+            familyId: null,
+            createdAt: serverTimestamp(),
+          });
+        }
+        router.replace("/");
+      } catch (err) {
+        if (!cancelled) setError(friendlyError(err.code));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   async function handleGoogle() {
     setError("");
     setGoogleBusy(true);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const userRef = doc(db, "users", result.user.uid);
-      const snap = await getDoc(userRef);
-      if (!snap.exists()) {
-        await setDoc(userRef, {
-          uid: result.user.uid,
-          displayName: result.user.displayName || "User",
-          email: result.user.email,
-          avatar: "",
-          coins: 0,
-          diamonds: 0,
-          vipLevel: 0,
-          totalRechargedRs: 0,
-          familyId: null,
-          createdAt: serverTimestamp(),
-        });
-      }
-      router.replace("/");
+      await signInWithRedirect(auth, googleProvider);
     } catch (err) {
       setError(friendlyError(err.code));
-    } finally {
       setGoogleBusy(false);
     }
   }
@@ -183,6 +199,8 @@ function friendlyError(code) {
     "auth/invalid-email": "That email doesn't look right.",
     "auth/weak-password": "Password is too weak.",
     "auth/popup-closed-by-user": "Google sign-in cancelled.",
+    "auth/unauthorized-domain":
+      "This site isn't authorized for Google sign-in yet — add it in Firebase Console → Authentication → Settings → Authorized domains.",
   };
   return map[code] || "Something went wrong. Please try again.";
 }

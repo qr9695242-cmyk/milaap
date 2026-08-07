@@ -66,7 +66,7 @@ export default function WalletPage() {
   }
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       <header className="px-5 pt-6">
         <h1 className="font-display text-xl font-extrabold text-ink">Wallet</h1>
       </header>

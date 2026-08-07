@@ -56,7 +56,7 @@ export default function RoomsPage() {
   const audioRooms = rooms.filter((r) => r.type === "audio");
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       <header className="flex items-center justify-between px-5 pt-6">
         <h1 className="font-display text-xl font-extrabold text-ink">Rooms</h1>
         <button

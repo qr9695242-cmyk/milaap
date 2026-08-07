@@ -33,6 +33,24 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Respect the iPhone home-indicator / gesture-bar area so the bottom nav
+   (and anything else pinned to the bottom) never gets cut off or covered. */
+.pb-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);
+}
+
+/* Mobile-first base sizing — slightly larger type and touch targets by
+   default, since most traffic here is phones, not desktop browsers. */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 17px;
+  }
+}
+
 /* visible keyboard focus, kept subtle but real */
 :focus-visible {
   outline: 2px solid #8B5CF6;

@@ -81,7 +81,7 @@ export default function RewardsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       <header className="flex items-center justify-between px-5 pt-6">
         <h1 className="font-display text-xl font-extrabold text-ink">Rewards</h1>
         <span className="rounded-full bg-panel px-3 py-1.5 text-xs text-diamond ring-1 ring-white/5">

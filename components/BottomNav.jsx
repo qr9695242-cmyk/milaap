@@ -15,7 +15,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/5 bg-panel/90 backdrop-blur-lg">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/5 bg-panel/90 backdrop-blur-lg pb-safe">
       <ul className="mx-auto flex max-w-md items-stretch justify-between px-2">
         {TABS.map((tab) => {
           const active = pathname === tab.href;
@@ -23,12 +23,12 @@ export default function BottomNav() {
             <li key={tab.href} className="flex-1">
               <Link
                 href={tab.href}
-                className={`flex flex-col items-center gap-1 py-3 text-xs transition-colors ${
+                className={`flex flex-col items-center gap-1.5 py-4 text-sm transition-colors active:opacity-70 ${
                   active ? "text-ink" : "text-mist"
                 }`}
               >
                 <span
-                  className={`text-lg leading-none ${
+                  className={`text-2xl leading-none ${
                     active ? "glow-text" : ""
                   }`}
                 >

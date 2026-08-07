@@ -85,7 +85,7 @@ export default function AgencyPage() {
   const totalDiamonds = members.reduce((sum, m) => sum + (m.diamonds || 0), 0);
 
   return (
-    <main className="min-h-screen bg-void pb-24">
+    <main className="min-h-screen bg-void pb-28">
       <header className="px-5 pt-6">
         <Link href="/profile" className="text-lg text-ink/80">←</Link>
         <h1 className="mt-2 font-display text-xl font-extrabold text-ink">Agency</h1>
