@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
 } from "firebase/auth";
@@ -37,30 +38,16 @@ export default function LoginPage() {
     if (user) router.replace("/");
   }, [user, router]);
 
-  // Mobile browsers (Safari, in-app webviews) block/kill popups a lot of
-  // the time — that's what was causing the silent "Something went wrong"
-  // error. signInWithRedirect sends the user to Google and back instead
-  // of opening a popup, then we pick the result up here on return.
+  // Fallback path only: some mobile/in-app browsers block signInWithPopup,
+  // in which case handleGoogle() below falls back to signInWithRedirect.
+  // We still need to catch that redirect's result on return here.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const result = await getRedirectResult(auth);
         if (!result || cancelled) return;
-        const userRef = doc(db, "users", result.user.uid);
-        const snap = await getDoc(userRef);
-        if (!snap.exists()) {
-          await setDoc(userRef, {
-            displayName: result.user.displayName || "User",
-            email: result.user.email,
-            coins: 0,
-            diamonds: 0,
-            totalRechargedRs: 0,
-            vipLevel: 0,
-            role: "user",
-            createdAt: serverTimestamp(),
-          });
-        }
+        await ensureUserDoc(result.user);
         router.replace("/");
       } catch (err) {
         // Log the real reason to the console even when we show a friendly
@@ -100,12 +87,39 @@ export default function LoginPage() {
     }
     setGoogleBusy(true);
     try {
-      // Redirects away from the page — result is handled in the
-      // getRedirectResult() effect above once the user comes back.
-      await signInWithRedirect(auth, googleProvider);
+      // Popup avoids the cross-domain redirect trip between our app's
+      // domain and Firebase's authDomain (*.firebaseapp.com) — that trip
+      // is where getRedirectResult() was silently coming back null on
+      // browsers that partition third-party storage (current Chrome,
+      // Safari), so the account never got created and the user just
+      // landed back on this same page with no error.
+      const result = await signInWithPopup(auth, googleProvider);
+      await ensureUserDoc(result.user);
+      router.replace("/");
     } catch (err) {
-      console.error("Google redirect sign-in failed to start:", err);
-      setError(friendlyError(err.code));
+      if (
+        err.code === "auth/popup-blocked" ||
+        err.code === "auth/operation-not-supported-in-this-environment" ||
+        err.code === "auth/popup-closed-by-user"
+      ) {
+        // Popup genuinely can't run here (some mobile browsers) — fall
+        // back to the redirect flow; result is picked up by the
+        // getRedirectResult() effect above once the user comes back.
+        if (err.code === "auth/popup-closed-by-user") {
+          setGoogleBusy(false);
+          return;
+        }
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return; // page is navigating away
+        } catch (redirectErr) {
+          console.error("Google redirect sign-in failed to start:", redirectErr);
+          setError(friendlyError(redirectErr.code));
+        }
+      } else {
+        console.error("Google sign-in failed:", err);
+        setError(friendlyError(err.code));
+      }
       setGoogleBusy(false);
     }
   }
@@ -200,6 +214,26 @@ function GoogleIcon() {
       <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.97l3 2.33C4.66 5.17 6.65 3.58 9 3.58z" />
     </svg>
   );
+}
+
+async function ensureUserDoc(firebaseUser) {
+  const userRef = doc(db, "users", firebaseUser.uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      uid: firebaseUser.uid,
+      displayName: firebaseUser.displayName || "User",
+      email: firebaseUser.email || "",
+      avatar: firebaseUser.photoURL || "",
+      coins: 0,
+      diamonds: 0,
+      totalRechargedRs: 0,
+      vipLevel: 0,
+      role: "user",
+      familyId: null,
+      createdAt: serverTimestamp(),
+    });
+  }
 }
 
 function friendlyError(code) {
