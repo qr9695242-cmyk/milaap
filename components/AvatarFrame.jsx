@@ -1,5 +1,7 @@
 "use client";
 
+import DecorationArt from "./DecorationArt";
+
 export default function AvatarFrame({
   src,
   name = "User",
@@ -39,7 +41,7 @@ export default function AvatarFrame({
           initial
         )}
       </div>
-      {frame?.emoji && <span className="frame-badge">{frame.emoji}</span>}
+      {frame && <span className="frame-badge" aria-hidden="true"><DecorationArt type="frame" id={frame.id} /></span>}
     </div>
   );
 }

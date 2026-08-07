@@ -14,6 +14,7 @@ import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
 import AvatarFrame from "@/components/AvatarFrame";
+import DecorationArt from "@/components/DecorationArt";
 
 export default function ProfilePage() {
   const { user, profile, loading } = useAuth();
@@ -59,7 +60,11 @@ export default function ProfilePage() {
             />
             <div>
               <p className="font-display text-lg font-extrabold text-ink">
-                {profile?.displayName || "User"} {equippedVehicle && <span title={equippedVehicle.name}>{equippedVehicle.emoji}</span>}
+                {profile?.displayName || "User"} {equippedVehicle && (
+                  <span title={equippedVehicle.name} className="inline-flex h-7 w-10 items-center justify-center rounded-lg bg-black/20 p-1 align-middle">
+                    <DecorationArt type="vehicle" id={equippedVehicle.id} />
+                  </span>
+                )}
               </p>
               <p className="text-xs text-ink/80">{profile?.email}</p>
               <div className="mt-1 flex flex-wrap gap-1">

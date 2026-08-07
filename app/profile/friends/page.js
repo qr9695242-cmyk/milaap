@@ -150,7 +150,7 @@ export default function FriendsCpPage() {
                 <div className="flex items-center gap-2">
                   <Avatar url={r.fromAvatar} name={r.fromName} size={36} />
                   <p className="text-xs text-ink">
-                    <span className="font-semibold">{r.fromName}</span> wants to be your CP 💞
+                    <span className="font-semibold">{r.fromName}</span> wants to be your CP
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -204,7 +204,7 @@ export default function FriendsCpPage() {
                 <p className="mt-2 line-clamp-1 text-center text-[11px] font-semibold text-white">
                   {name}
                 </p>
-                <p className="text-[9px] text-white/80">🎗 {days} days</p>
+                <p className="text-[9px] text-white/80">{days} days</p>
                 <button
                   onClick={() => handleCpAction(removeFriend, f.id)}
                   disabled={busyId === f.id}

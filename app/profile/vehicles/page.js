@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { VEHICLE_CATALOG, RARITY_STYLE, purchaseDecoration, equipDecoration } from "@/lib/decorations";
 import BottomNav from "@/components/BottomNav";
+import DecorationArt from "@/components/DecorationArt";
 
 export default function VehiclesShopPage() {
   const { user, profile, loading } = useAuth();
@@ -87,7 +88,7 @@ export default function VehiclesShopPage() {
                 className="flex h-16 w-16 items-center justify-center rounded-xl text-3xl"
                 style={{ background: item.free ? "rgba(255,255,255,0.05)" : item.gradient }}
               >
-                {item.free ? "🚫" : item.emoji}
+                <DecorationArt type="vehicle" id={item.id} />
               </div>
               <p className="mt-2 line-clamp-1 text-center text-[11px] font-semibold text-ink">{item.name}</p>
               <p className="text-[9px] uppercase tracking-wide text-mist">{style.label}</p>

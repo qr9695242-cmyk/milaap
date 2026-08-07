@@ -185,3 +185,18 @@ html {
   box-shadow: inset 0 0 12px rgba(0,0,0,.25);
 }
 .frame-bg-option.active { border-color: #f5c34d; box-shadow: 0 0 0 2px rgba(245,195,77,.2), 0 0 14px rgba(245,195,77,.35); }
+
+/* Real vector artwork for frames and vehicles — no decorative emoji glyphs. */
+.frame-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  padding: 3px;
+  background: rgba(10, 8, 20, .82);
+  box-shadow: 0 4px 14px rgba(0,0,0,.35);
+}
