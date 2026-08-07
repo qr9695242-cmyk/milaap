@@ -200,3 +200,71 @@ html {
   background: rgba(10, 8, 20, .82);
   box-shadow: 0 4px 14px rgba(0,0,0,.35);
 }
+
+/* Premium real-photo vehicle cards */
+.vehicle-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  background: linear-gradient(180deg, rgba(25,18,48,.98), rgba(12,9,25,.98));
+  border-color: rgba(139,92,246,.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 12px 30px rgba(0,0,0,.22);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.vehicle-card:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,0,0,.34), 0 0 22px rgba(139,92,246,.18); border-color: rgba(255,59,127,.55); }
+.vehicle-art-frame {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: radial-gradient(circle at 50% 20%, rgba(139,92,246,.18), transparent 58%), #080714;
+  box-shadow: inset 0 0 35px rgba(0,0,0,.5);
+}
+.vehicle-photo { position: relative; width: 100%; height: 100%; }
+.vehicle-photo img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(1.08) contrast(1.04); transform: scale(1.015); }
+.vehicle-photo-shine { position:absolute; inset:0; pointer-events:none; background: linear-gradient(115deg, rgba(255,255,255,.10), transparent 25%, transparent 72%, rgba(255,59,127,.10)); mix-blend-mode:screen; }
+.vehicle-rarity { position:absolute; left:10px; top:10px; padding:4px 8px; border-radius:999px; font-size:9px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; background:rgba(7,5,15,.72); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.12); }
+.vehicle-rarity-common { color:#c8c1d7; }
+.vehicle-rarity-rare { color:#5ed4e8; }
+.vehicle-rarity-epic { color:#c59cff; }
+.vehicle-rarity-legendary { color:#ffd76a; }
+.vehicle-rarity-mythic { color:#ff72b0; }
+
+/* Physical-photo-frame look for the frame shop and profile previews */
+.avatar-frame {
+  border-radius: 8px;
+  padding: 7px;
+  background: linear-gradient(145deg, #f7e2a2 0%, #8d6424 18%, #2c1b0b 42%, #d7a83f 76%, #5b3a12 100%);
+  border: 4px solid #d4a83f;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.34), inset 0 0 18px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.45), 0 0 24px rgba(245,195,77,.18);
+}
+.frame-common { border-color:#aeb7c8; background:linear-gradient(145deg,#eef3f8,#6e7788 38%,#dce5f0 70%,#535d6d); }
+.frame-rare { border-color:#54d8ee; background:linear-gradient(145deg,#d7ffff,#176b85 38%,#5ed4e8 70%,#0b3547); }
+.frame-epic { border-color:#a78bfa; background:linear-gradient(145deg,#f0e9ff,#5b35a4 38%,#a78bfa 70%,#27104d); }
+.frame-legendary { border-color:#f5c34d; background:linear-gradient(145deg,#fff4b0,#8a5b11 38%,#f5c34d 70%,#3c2306); }
+.frame-mythic { border-color:#ff3b7f; background:linear-gradient(145deg,#ffd1e4,#7c1649 35%,#ff3b7f 68%,#2a0a1a); }
+.frame-avatar { border-radius: 3px; border: 3px solid #1b1228; background:rgba(8,6,14,.65); box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), 0 3px 12px rgba(0,0,0,.45); }
+.frame-corner, .frame-diamond { opacity:.75; }
+.frame-shop-preview {
+  width: 132px;
+  height: 154px;
+  padding: 8px;
+  border-radius: 7px;
+  border: 4px solid #d4a83f;
+  background: linear-gradient(145deg,#f7e2a2,#8d6424 30%,#2c1b0b 52%,#d7a83f 80%,#5b3a12);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.30), inset 0 0 22px rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.35), 0 0 24px rgba(245,195,77,.16);
+}
+.frame-shop-preview .avatar-frame { width:100%; height:100%; border:0; border-radius:3px; padding:4px; box-shadow:none; background:linear-gradient(145deg,#f8e7aa,#6e4814 45%,#d4a83f); }
+.frame-shop-preview .frame-avatar { width:100%; height:100%; border-radius:2px; }
+.frame-shop-preview::before, .frame-shop-preview::after { content:""; width:10px; height:10px; border:1px solid rgba(255,244,176,.85); transform:rotate(45deg); border-radius:1px; background:#f5c34d; box-shadow:0 0 8px rgba(245,195,77,.55); }
+.frame-shop-preview::before { top:7px; left:7px; }
+.frame-shop-preview::after { bottom:7px; right:7px; }
+.frame-card { background:linear-gradient(180deg,rgba(28,20,47,.98),rgba(12,9,24,.98)); box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 30px rgba(0,0,0,.22); }
+
+@media (max-width: 640px) {
+  .vehicle-art-frame { height: 118px; }
+  .vehicle-card { padding: 9px; }
+  .frame-shop-preview { width: 112px; height: 134px; }
+}

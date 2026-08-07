@@ -82,16 +82,14 @@ export default function VehiclesShopPage() {
           return (
             <div
               key={item.id}
-              className={`flex flex-col items-center rounded-xl bg-panel p-3 ring-1 ${style.ring} ${style.glow}`}
+              className={`vehicle-card flex flex-col items-center rounded-2xl bg-panel p-3 ring-1 ${style.ring} ${style.glow}`}
             >
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-xl text-3xl"
-                style={{ background: item.free ? "rgba(255,255,255,0.05)" : item.gradient }}
-              >
+              <div className="vehicle-art-frame">
                 <DecorationArt type="vehicle" id={item.id} />
+                <span className={`vehicle-rarity vehicle-rarity-${item.rarity}`}>{style.label}</span>
               </div>
               <p className="mt-2 line-clamp-1 text-center text-[11px] font-semibold text-ink">{item.name}</p>
-              <p className="text-[9px] uppercase tracking-wide text-mist">{style.label}</p>
+              
               {!item.free && (
                 <p className="mt-1 text-[10px] font-bold text-diamond">● {item.priceCoins}</p>
               )}

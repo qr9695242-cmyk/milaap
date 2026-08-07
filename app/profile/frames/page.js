@@ -114,7 +114,7 @@ export default function FramesShopPage() {
           return (
             <div
               key={item.id}
-              className={`flex flex-col items-center rounded-2xl bg-panel p-3 ring-1 ${style.ring} ${style.glow}`}
+              className={`frame-card flex flex-col items-center rounded-2xl bg-panel p-3 ring-1 ${style.ring} ${style.glow}`}
             >
               <div
                 className="frame-shop-preview"
