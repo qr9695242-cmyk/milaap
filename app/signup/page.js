@@ -6,47 +6,53 @@ import { useRouter } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
+import { useAuth } from "@/lib/AuthContext";
+import { isInAppBrowser } from "@/lib/inAppBrowser";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [inAppWarning, setInAppWarning] = useState(false);
 
-  // See app/login/page.js for why this is a redirect instead of a popup.
+  useEffect(() => {
+    setInAppWarning(isInAppBrowser());
+  }, []);
+
+  // Fallback: AuthContext's onAuthStateChanged is more reliable across the
+  // Google redirect trip than getRedirectResult() below — if it already
+  // picked up the user (and created the profile doc), just navigate home.
+  useEffect(() => {
+    if (user) router.replace("/");
+  }, [user, router]);
+
+  // Fallback path only — see app/login/page.js for why popup (in
+  // handleGoogle below) is now the primary path, with redirect only as a
+  // fallback for browsers that block popups.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const result = await getRedirectResult(auth);
         if (!result || cancelled) return;
-        const userRef = doc(db, "users", result.user.uid);
-        const snap = await getDoc(userRef);
-        if (!snap.exists()) {
-          await setDoc(userRef, {
-            uid: result.user.uid,
-            displayName: result.user.displayName || "User",
-            email: result.user.email,
-            avatar: "",
-            coins: 0,
-            diamonds: 0,
-            vipLevel: 0,
-            totalRechargedRs: 0,
-            familyId: null,
-            createdAt: serverTimestamp(),
-          });
-        }
+        await ensureUserDoc(result.user);
         router.replace("/");
       } catch (err) {
+        console.error("Google redirect sign-in failed:", err);
         if (!cancelled) setError(friendlyError(err.code));
+      } finally {
+        if (!cancelled) setGoogleBusy(false);
       }
     })();
     return () => {
@@ -56,11 +62,43 @@ export default function SignupPage() {
 
   async function handleGoogle() {
     setError("");
+    if (isInAppBrowser()) {
+      setError(
+        "Google sign-in doesn't work inside this in-app browser. Tap the ⋯ / share menu and choose \"Open in Chrome\" or \"Open in Safari\", then try again."
+      );
+      return;
+    }
     setGoogleBusy(true);
     try {
-      await signInWithRedirect(auth, googleProvider);
+      // Popup avoids the cross-domain redirect trip between our app's
+      // domain and Firebase's authDomain (*.firebaseapp.com), which is
+      // where getRedirectResult() was silently resolving to null on
+      // browsers that partition third-party storage — no error, no
+      // account, just landing back on this page.
+      const result = await signInWithPopup(auth, googleProvider);
+      await ensureUserDoc(result.user);
+      router.replace("/");
     } catch (err) {
-      setError(friendlyError(err.code));
+      if (
+        err.code === "auth/popup-blocked" ||
+        err.code === "auth/operation-not-supported-in-this-environment" ||
+        err.code === "auth/popup-closed-by-user"
+      ) {
+        if (err.code === "auth/popup-closed-by-user") {
+          setGoogleBusy(false);
+          return;
+        }
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return; // page is navigating away
+        } catch (redirectErr) {
+          console.error("Google redirect sign-in failed to start:", redirectErr);
+          setError(friendlyError(redirectErr.code));
+        }
+      } else {
+        console.error("Google sign-in failed:", err);
+        setError(friendlyError(err.code));
+      }
       setGoogleBusy(false);
     }
   }
@@ -118,6 +156,11 @@ export default function SignupPage() {
           <GoogleIcon />
           {googleBusy ? "Signing in…" : "Continue with Google"}
         </button>
+        {inAppWarning && (
+          <p className="mt-2 text-center text-[11px] text-gold">
+            ⚠️ You're in an in-app browser — Google sign-in may not work here. Open this link in Chrome/Safari for best results.
+          </p>
+        )}
 
         <div className="mt-5 flex items-center gap-3">
           <div className="h-px flex-1 bg-white/10" />
@@ -191,6 +234,25 @@ function GoogleIcon() {
       <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.97l3 2.33C4.66 5.17 6.65 3.58 9 3.58z" />
     </svg>
   );
+}
+
+async function ensureUserDoc(firebaseUser) {
+  const userRef = doc(db, "users", firebaseUser.uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      uid: firebaseUser.uid,
+      displayName: firebaseUser.displayName || "User",
+      email: firebaseUser.email || "",
+      avatar: firebaseUser.photoURL || "",
+      coins: 0,
+      diamonds: 0,
+      vipLevel: 0,
+      totalRechargedRs: 0,
+      familyId: null,
+      createdAt: serverTimestamp(),
+    });
+  }
 }
 
 function friendlyError(code) {

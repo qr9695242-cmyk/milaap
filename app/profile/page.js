@@ -103,7 +103,7 @@ export default function ProfilePage() {
           { label: "Blocked Users", href: "/blocked" },
           { label: "Frames", href: "/profile/frames" },
           { label: "Vehicles / Cars", href: "/profile/vehicles" },
-          { label: "Friends / CP", href: null },
+          { label: "Friends / CP", href: "/profile/friends" },
         ].map((item) =>
           item.href ? (
             <Link
