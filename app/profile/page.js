@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { vipLevelForSpend } from "@/lib/vip";
 import { hostLevelForDiamonds } from "@/lib/hostLevel";
 import { effectiveRole } from "@/lib/roles";
+import { findItem } from "@/lib/decorations";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -34,18 +35,25 @@ export default function ProfilePage() {
   const isSuperAdmin = role === "superadmin";
   const vipTier = vipLevelForSpend(profile?.totalRechargedRs);
   const hostTier = hostLevelForDiamonds(profile?.diamonds);
+  const equippedFrame = profile?.equippedFrame ? findItem("frame", profile.equippedFrame) : null;
+  const equippedVehicle = profile?.equippedVehicle ? findItem("vehicle", profile.equippedVehicle) : null;
 
   return (
     <main className="min-h-screen bg-void pb-28">
       <section className="bg-glow-gradient px-5 pb-8 pt-10">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 text-2xl font-bold text-ink ring-2 ring-white/40">
-              {(profile?.displayName || "U").charAt(0).toUpperCase()}
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-full p-[3px]"
+              style={{ background: equippedFrame ? equippedFrame.gradient : "transparent" }}
+            >
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 text-2xl font-bold text-ink ring-2 ring-white/40">
+                {(profile?.displayName || "U").charAt(0).toUpperCase()}
+              </div>
             </div>
             <div>
               <p className="font-display text-lg font-extrabold text-ink">
-                {profile?.displayName || "User"}
+                {profile?.displayName || "User"} {equippedVehicle && <span title={equippedVehicle.name}>{equippedVehicle.emoji}</span>}
               </p>
               <p className="text-xs text-ink/80">{profile?.email}</p>
               <div className="mt-1 flex flex-wrap gap-1">
@@ -93,8 +101,8 @@ export default function ProfilePage() {
           { label: "Agency", href: "/agency" },
           { label: "Help & Support", href: "/help" },
           { label: "Blocked Users", href: "/blocked" },
-          { label: "Frames", href: null },
-          { label: "Vehicles / Cars", href: null },
+          { label: "Frames", href: "/profile/frames" },
+          { label: "Vehicles / Cars", href: "/profile/vehicles" },
           { label: "Friends / CP", href: null },
         ].map((item) =>
           item.href ? (
