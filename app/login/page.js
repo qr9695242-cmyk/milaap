@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
@@ -28,49 +26,22 @@ export default function LoginPage() {
     setInAppWarning(isInAppBrowser());
   }, []);
 
-  // Fallback #1: if AuthContext already picked up the signed-in user
-  // (it listens with onAuthStateChanged, which is more reliable across
-  // redirects than getRedirectResult on this specific page load), just
-  // navigate home. This covers the case where getRedirectResult() below
-  // silently misses the result — the account still gets created by
-  // AuthContext, we just weren't leaving the login page.
+  // Firebase AuthContext is the single source of truth after login.
+  // When Firebase reports a signed-in user, leave the login page.
   useEffect(() => {
     if (user) router.replace("/");
   }, [user, router]);
-
-  // Fallback path only: some mobile/in-app browsers block signInWithPopup,
-  // in which case handleGoogle() below falls back to signInWithRedirect.
-  // We still need to catch that redirect's result on return here.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (!result || cancelled) return;
-        await ensureUserDoc(result.user);
-        router.replace("/");
-      } catch (err) {
-        // Log the real reason to the console even when we show a friendly
-        // message — "silent failure" bugs are almost always visible here.
-        console.error("Google redirect sign-in failed:", err);
-        if (!cancelled) setError(friendlyError(err.code));
-      } finally {
-        if (!cancelled) setGoogleBusy(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
 
   async function handleLogin(e) {
     e.preventDefault();
     setError("");
     setBusy(true);
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.replace("/");
     } catch (err) {
+      console.error("Email sign-in failed:", err);
       setError(friendlyError(err.code));
     } finally {
       setBusy(false);
@@ -79,47 +50,31 @@ export default function LoginPage() {
 
   async function handleGoogle() {
     setError("");
+
     if (isInAppBrowser()) {
       setError(
-        "Google sign-in doesn't work inside this in-app browser. Tap the ⋯ / share menu and choose \"Open in Chrome\" or \"Open in Safari\", then try again."
+        'Google sign-in does not work reliably inside an in-app browser. Open this site in Chrome or Safari and try again.'
       );
       return;
     }
+
     setGoogleBusy(true);
+
     try {
-      // Popup avoids the cross-domain redirect trip between our app's
-      // domain and Firebase's authDomain (*.firebaseapp.com) — that trip
-      // is where getRedirectResult() was silently coming back null on
-      // browsers that partition third-party storage (current Chrome,
-      // Safari), so the account never got created and the user just
-      // landed back on this same page with no error.
+      // IMPORTANT: Use popup only. Do not fall back to signInWithRedirect.
+      // Redirect can send the browser to Firebase's auth handler and, on
+      // some Vercel/domain configurations, return a 404 instead of Milaap.
       const result = await signInWithPopup(auth, googleProvider);
+
+      // Create the user's Firestore profile if it does not exist yet.
       await ensureUserDoc(result.user);
+
+      // Firebase auth state is now established. Go directly to the app.
       router.replace("/");
     } catch (err) {
-      if (
-        err.code === "auth/popup-blocked" ||
-        err.code === "auth/operation-not-supported-in-this-environment" ||
-        err.code === "auth/popup-closed-by-user"
-      ) {
-        // Popup genuinely can't run here (some mobile browsers) — fall
-        // back to the redirect flow; result is picked up by the
-        // getRedirectResult() effect above once the user comes back.
-        if (err.code === "auth/popup-closed-by-user") {
-          setGoogleBusy(false);
-          return;
-        }
-        try {
-          await signInWithRedirect(auth, googleProvider);
-          return; // page is navigating away
-        } catch (redirectErr) {
-          console.error("Google redirect sign-in failed to start:", redirectErr);
-          setError(friendlyError(redirectErr.code));
-        }
-      } else {
-        console.error("Google sign-in failed:", err);
-        setError(friendlyError(err.code));
-      }
+      console.error("Google sign-in failed:", err);
+      setError(friendlyError(err.code));
+    } finally {
       setGoogleBusy(false);
     }
   }
@@ -130,11 +85,13 @@ export default function LoginPage() {
         <h1 className="font-display text-3xl font-extrabold">
           <span className="glow-text">Milaap</span>
         </h1>
+
         <p className="mt-2 text-sm text-mist">
           Sign in to go live, join rooms, and battle.
         </p>
 
         <button
+          type="button"
           onClick={handleGoogle}
           disabled={googleBusy}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3 text-sm font-semibold text-void disabled:opacity-60"
@@ -142,9 +99,11 @@ export default function LoginPage() {
           <GoogleIcon />
           {googleBusy ? "Signing in…" : "Continue with Google"}
         </button>
+
         {inAppWarning && (
           <p className="mt-2 text-center text-[11px] text-gold">
-            ⚠️ You're in an in-app browser — Google sign-in may not work here. Open this link in Chrome/Safari for best results.
+            ⚠️ You&apos;re in an in-app browser. Open this link in Chrome/Safari
+            for Google sign-in.
           </p>
         )}
 
@@ -166,13 +125,18 @@ export default function LoginPage() {
               placeholder="you@example.com"
             />
           </div>
+
           <div>
             <div className="flex items-center justify-between">
               <label className="text-xs text-mist">Password</label>
-              <Link href="/forgot-password" className="text-xs text-neon-violet underline">
+              <Link
+                href="/forgot-password"
+                className="text-xs text-neon-violet underline"
+              >
                 Forgot password?
               </Link>
             </div>
+
             <input
               type="password"
               required
@@ -207,7 +171,7 @@ export default function LoginPage() {
 
 function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
       <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z" />
       <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.95v2.33A9 9 0 0 0 9 18z" />
       <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.03l3-2.33z" />
@@ -219,10 +183,12 @@ function GoogleIcon() {
 async function ensureUserDoc(firebaseUser) {
   const userRef = doc(db, "users", firebaseUser.uid);
   const snap = await getDoc(userRef);
+
   if (!snap.exists()) {
     await setDoc(userRef, {
       uid: firebaseUser.uid,
       displayName: firebaseUser.displayName || "User",
+      displayNameLower: (firebaseUser.displayName || "User").toLowerCase(),
       email: firebaseUser.email || "",
       avatar: firebaseUser.photoURL || "",
       coins: 0,
@@ -231,6 +197,8 @@ async function ensureUserDoc(firebaseUser) {
       vipLevel: 0,
       role: "user",
       familyId: null,
+      followersCount: 0,
+      followingCount: 0,
       createdAt: serverTimestamp(),
     });
   }
@@ -243,9 +211,14 @@ function friendlyError(code) {
     "auth/wrong-password": "Incorrect password.",
     "auth/invalid-credential": "Email or password is incorrect.",
     "auth/too-many-requests": "Too many attempts. Try again later.",
-    "auth/popup-closed-by-user": "Google sign-in cancelled.",
+    "auth/popup-closed-by-user": "Google sign-in was cancelled.",
+    "auth/popup-blocked":
+      "Your browser blocked the Google popup. Allow popups for this site and try again.",
     "auth/unauthorized-domain":
-      "This site isn't authorized for Google sign-in yet — add it in Firebase Console → Authentication → Settings → Authorized domains.",
+      "This site is not authorized for Google sign-in. Add the Vercel domain in Firebase Console → Authentication → Settings → Authorized domains.",
+    "auth/account-exists-with-different-credential":
+      "This email already has another sign-in method. Sign in with that method first, then link Google from the account settings.",
   };
+
   return map[code] || "Something went wrong. Please try again.";
 }
