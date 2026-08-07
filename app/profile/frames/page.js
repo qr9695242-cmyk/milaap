@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
-import { FRAME_CATALOG, RARITY_STYLE, purchaseDecoration, equipDecoration } from "@/lib/decorations";
+import { FRAME_CATALOG, RARITY_STYLE, purchaseDecoration, equipDecoration, setFrameBackground } from "@/lib/decorations";
+import AvatarFrame from "@/components/AvatarFrame";
 import BottomNav from "@/components/BottomNav";
 
 export default function FramesShopPage() {
@@ -29,6 +30,13 @@ export default function FramesShopPage() {
   const owned = profile?.ownedFrames || [];
   const equipped = profile?.equippedFrame || null;
   const coins = profile?.coins ?? 0;
+  const frameBackground = profile?.frameBackground || "aurora";
+  const backgrounds = {
+    aurora: "linear-gradient(135deg,#24123f,#6d1f7b 48%,#15112c)",
+    royal: "linear-gradient(135deg,#15100a,#5b3a0a 48%,#17120a)",
+    ocean: "linear-gradient(135deg,#071d35,#075985 48%,#08131f)",
+    ruby: "linear-gradient(135deg,#300810,#8f1239 48%,#190710)",
+  };
 
   async function handleAction(item) {
     setError(null);
@@ -73,7 +81,32 @@ export default function FramesShopPage() {
         </p>
       )}
 
-      <section className="mx-5 mt-4 grid grid-cols-3 gap-3">
+      <section className="mx-5 mt-4 rounded-2xl bg-panel p-4 ring-1 ring-white/5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-sm font-extrabold text-ink">Frame Background</h2>
+            <p className="mt-0.5 text-[10px] text-mist">Choose the background behind your premium frame</p>
+          </div>
+          <span className="text-[10px] font-bold text-diamond">{frameBackground.toUpperCase()}</span>
+        </div>
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {Object.entries(backgrounds).map(([id, bg]) => (
+            <button
+              key={id}
+              type="button"
+              className={`frame-bg-option ${frameBackground === id ? "active" : ""}`}
+              style={{ background: bg }}
+              onClick={async () => {
+                setError(null);
+                try { await setFrameBackground(user.uid, id); } catch (e) { setError(e.message); }
+              }}
+              aria-label={`Use ${id} frame background`}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-5 mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {FRAME_CATALOG.map((item) => {
           const isOwned = item.free || owned.includes(item.id);
           const isEquipped = item.free ? !equipped : equipped === item.id;
@@ -81,16 +114,19 @@ export default function FramesShopPage() {
           return (
             <div
               key={item.id}
-              className={`flex flex-col items-center rounded-xl bg-panel p-3 ring-1 ${style.ring} ${style.glow}`}
+              className={`flex flex-col items-center rounded-2xl bg-panel p-3 ring-1 ${style.ring} ${style.glow}`}
             >
               <div
-                className="flex h-16 w-16 items-center justify-center rounded-full text-2xl ring-4 ring-offset-2 ring-offset-panel"
-                style={{
-                  background: item.free ? "rgba(255,255,255,0.05)" : item.gradient,
-                  ringColor: "transparent",
-                }}
+                className="frame-shop-preview"
+                style={{ "--frame-gradient": item.free ? "linear-gradient(135deg,#30303a,#111118)" : item.gradient }}
               >
-                {item.free ? "🚫" : item.emoji}
+                <AvatarFrame
+                  name={profile?.displayName || "User"}
+                  src={profile?.avatar || user.photoURL || ""}
+                  frame={item.free ? null : item}
+                  background={backgrounds[frameBackground]}
+                  size="md"
+                />
               </div>
               <p className="mt-2 line-clamp-1 text-center text-[11px] font-semibold text-ink">{item.name}</p>
               <p className="text-[9px] uppercase tracking-wide text-mist">{style.label}</p>

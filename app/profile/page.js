@@ -13,6 +13,7 @@ import { findItem } from "@/lib/decorations";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
+import AvatarFrame from "@/components/AvatarFrame";
 
 export default function ProfilePage() {
   const { user, profile, loading } = useAuth();
@@ -37,20 +38,25 @@ export default function ProfilePage() {
   const hostTier = hostLevelForDiamonds(profile?.diamonds);
   const equippedFrame = profile?.equippedFrame ? findItem("frame", profile.equippedFrame) : null;
   const equippedVehicle = profile?.equippedVehicle ? findItem("vehicle", profile.equippedVehicle) : null;
+  const frameBackgrounds = {
+    aurora: "linear-gradient(135deg,#24123f,#6d1f7b 48%,#15112c)",
+    royal: "linear-gradient(135deg,#15100a,#5b3a0a 48%,#17120a)",
+    ocean: "linear-gradient(135deg,#071d35,#075985 48%,#08131f)",
+    ruby: "linear-gradient(135deg,#300810,#8f1239 48%,#190710)",
+  };
 
   return (
     <main className="min-h-screen bg-void pb-28">
       <section className="bg-glow-gradient px-5 pb-8 pt-10">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div
-              className="flex h-16 w-16 items-center justify-center rounded-full p-[3px]"
-              style={{ background: equippedFrame ? equippedFrame.gradient : "transparent" }}
-            >
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 text-2xl font-bold text-ink ring-2 ring-white/40">
-                {(profile?.displayName || "U").charAt(0).toUpperCase()}
-              </div>
-            </div>
+            <AvatarFrame
+              name={profile?.displayName || "User"}
+              src={profile?.avatar || user.photoURL || ""}
+              frame={equippedFrame}
+              background={frameBackgrounds[profile?.frameBackground || "aurora"]}
+              size="md"
+            />
             <div>
               <p className="font-display text-lg font-extrabold text-ink">
                 {profile?.displayName || "User"} {equippedVehicle && <span title={equippedVehicle.name}>{equippedVehicle.emoji}</span>}

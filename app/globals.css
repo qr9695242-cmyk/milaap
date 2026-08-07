@@ -70,3 +70,118 @@ html {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Premium game-style avatar frames: rectangular/ornate instead of plain circles. */
+.avatar-frame {
+  --frame-gradient: linear-gradient(135deg, #f5c34d, #ff3b7f, #8b5cf6);
+  --frame-line: #f5c34d;
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background:
+    linear-gradient(var(--frame-bg, rgba(9,6,16,.72)), var(--frame-bg, rgba(9,6,16,.72))) padding-box,
+    linear-gradient(135deg, rgba(255,255,255,.95), var(--frame-line), rgba(255,255,255,.25), var(--frame-line)) border-box;
+  border: 4px solid transparent;
+  border-radius: 18px;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 8px 24px rgba(0,0,0,.28), 0 0 24px rgba(245,195,77,.2);
+  isolation: isolate;
+}
+
+.frame-shell-sm { width: 58px; height: 68px; }
+.frame-shell-md { width: 78px; height: 90px; }
+.frame-shell-lg { width: 112px; height: 130px; }
+
+.frame-avatar {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,.78);
+  background: rgba(10,7,18,.55);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: white;
+  box-shadow: inset 0 0 16px rgba(0,0,0,.35);
+}
+.frame-avatar-sm { width: 38px; height: 46px; font-size: 16px; }
+.frame-avatar-md { width: 52px; height: 62px; font-size: 22px; }
+.frame-avatar-lg { width: 78px; height: 94px; font-size: 32px; }
+
+.frame-corner {
+  position: absolute;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  border-color: #fff;
+  filter: drop-shadow(0 0 4px rgba(245,195,77,.7));
+}
+.frame-corner-tl { left: -2px; top: -2px; border-left: 4px solid var(--frame-line); border-top: 4px solid var(--frame-line); border-radius: 8px 0 0 0; }
+.frame-corner-tr { right: -2px; top: -2px; border-right: 4px solid var(--frame-line); border-top: 4px solid var(--frame-line); border-radius: 0 8px 0 0; }
+.frame-corner-bl { left: -2px; bottom: -2px; border-left: 4px solid var(--frame-line); border-bottom: 4px solid var(--frame-line); border-radius: 0 0 0 8px; }
+.frame-corner-br { right: -2px; bottom: -2px; border-right: 4px solid var(--frame-line); border-bottom: 4px solid var(--frame-line); border-radius: 0 0 8px 0; }
+
+.frame-diamond {
+  position: absolute;
+  z-index: 4;
+  width: 10px;
+  height: 10px;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #fff7bd, var(--frame-line));
+  border: 1px solid rgba(255,255,255,.8);
+  box-shadow: 0 0 8px rgba(245,195,77,.8);
+}
+.frame-diamond-top { top: -7px; left: calc(50% - 5px); }
+.frame-diamond-bottom { bottom: -7px; left: calc(50% - 5px); }
+
+.frame-badge {
+  position: absolute;
+  right: -7px;
+  top: -10px;
+  z-index: 5;
+  font-size: 12px;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.5));
+}
+
+.frame-common { --frame-line: #b8c0cf; }
+.frame-rare { --frame-line: #5ed4e8; }
+.frame-epic { --frame-line: #a78bfa; }
+.frame-legendary { --frame-line: #f5c34d; }
+.frame-mythic { --frame-line: #ff3b7f; }
+.frame-none { --frame-line: #7b708f; }
+
+/* Frame-shop cards: make the preview look like a collectible frame, not a circle. */
+.frame-shop-preview {
+  position: relative;
+  width: 92px;
+  height: 108px;
+  display: grid;
+  place-items: center;
+  margin: 2px auto 4px;
+  border-radius: 20px;
+  border: 3px solid transparent;
+  background:
+    linear-gradient(rgba(9,6,16,.72), rgba(9,6,16,.72)) padding-box,
+    var(--frame-gradient, linear-gradient(135deg,#f5c34d,#ff3b7f,#8b5cf6)) border-box;
+  box-shadow: 0 8px 22px rgba(0,0,0,.25), 0 0 20px rgba(139,92,246,.18);
+}
+.frame-shop-preview::before,
+.frame-shop-preview::after {
+  content: "✦";
+  position: absolute;
+  color: #fff0a8;
+  text-shadow: 0 0 7px rgba(245,195,77,.9);
+  font-size: 13px;
+}
+.frame-shop-preview::before { top: 4px; left: 7px; }
+.frame-shop-preview::after { bottom: 4px; right: 7px; }
+
+.frame-bg-option {
+  min-width: 78px;
+  height: 42px;
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,.12);
+  box-shadow: inset 0 0 12px rgba(0,0,0,.25);
+}
+.frame-bg-option.active { border-color: #f5c34d; box-shadow: 0 0 0 2px rgba(245,195,77,.2), 0 0 14px rgba(245,195,77,.35); }
