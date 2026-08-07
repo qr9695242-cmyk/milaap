@@ -1,6 +1,0 @@
-Live gifting updated:
-- Dedicated 🎁 Gift item costs 250 coins.
-- Gift button is visibly featured in the live room.
-- Viewer sends the gift directly to the live host.
-- Host cannot gift themselves from the viewer gift control.
-- Existing Firestore transaction/feed logic is preserved.
