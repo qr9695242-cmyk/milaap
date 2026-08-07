@@ -1,0 +1,6 @@
+TikTok-style live gifting UI:
+- Compact 🎁 gift launcher button.
+- Tap it to open a bottom-sheet gift panel.
+- Dedicated Gift item costs 250 coins.
+- Other existing gifts remain available in the same panel.
+- Gift is sent to the selected live host.
