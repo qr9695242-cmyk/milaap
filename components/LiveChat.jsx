@@ -5,7 +5,7 @@ import { listenChat, sendChatMessage } from "@/lib/chat";
 import { VIP_TIERS } from "@/lib/vip";
 import VipBadge from "@/components/VipBadge";
 
-export default function LiveChat({ roomId, uid, name, vipLevel = 0, onOpenGifts }) {
+export default function LiveChat({ roomId, uid, name, vipLevel = 0, onOpenGifts, onSendHeart }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [showEmojis, setShowEmojis] = useState(false);
@@ -110,6 +110,16 @@ export default function LiveChat({ roomId, uid, name, vipLevel = 0, onOpenGifts 
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel text-lg ring-1 ring-white/5"
           >
             🎁
+          </button>
+        )}
+        {onSendHeart && (
+          <button
+            type="button"
+            onClick={onSendHeart}
+            aria-label="Send a heart"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel text-lg ring-1 ring-white/5 active:scale-90 transition-transform"
+          >
+            ❤️
           </button>
         )}
         <button
