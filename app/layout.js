@@ -2,6 +2,7 @@ import { Manrope, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
 import { ThemeProvider } from "@/lib/ThemeContext";
+import { InstallProvider } from "@/lib/InstallContext";
 import InstallPrompt from "@/components/InstallPrompt";
 
 const display = Manrope({
@@ -48,8 +49,10 @@ export default function RootLayout({ children }) {
       <body className="font-body bg-void min-h-screen">
         <ThemeProvider>
           <AuthProvider>
-            {children}
-            <InstallPrompt />
+            <InstallProvider>
+              {children}
+              <InstallPrompt />
+            </InstallProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

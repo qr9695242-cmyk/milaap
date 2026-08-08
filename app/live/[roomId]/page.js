@@ -6,15 +6,17 @@ import { useAuth } from "@/lib/AuthContext";
 import { listenRoom, endRoom, announceEntrance } from "@/lib/rooms";
 import { findBackground } from "@/lib/backgrounds";
 import { findItem } from "@/lib/decorations";
-import { joinRoomPresence, removeCoHost } from "@/lib/coHost";
-import { createAgoraClient, createCameraTrack, createMicTrack, fetchAgoraToken, AGORA_APP_ID } from "@/lib/agora";
+import { joinRoomPresence, removeCoHost, listenParticipants } from "@/lib/coHost";
+import { createAgoraClient, createMicAndCameraTracks, fetchAgoraToken, AGORA_APP_ID } from "@/lib/agora";
 import LiveChat from "@/components/LiveChat";
 import GiftBar from "@/components/GiftBar";
 import GiftFeed from "@/components/GiftFeed";
+import FloatingHearts from "@/components/FloatingHearts";
 import EntranceBanner from "@/components/EntranceBanner";
 import BackgroundPicker from "@/components/BackgroundPicker";
 import AddGuestButton from "@/components/AddGuestButton";
 import CoHostInvitePrompt from "@/components/CoHostInvitePrompt";
+import FollowButton from "@/components/FollowButton";
 
 // Video stage always has two named slots: "primary" (the host) and
 // "secondary" (the co-host, only shown once someone accepts an invite).
@@ -33,6 +35,10 @@ export default function LiveRoomPage() {
   const [micOn, setMicOn] = useState(true);
   const [error, setError] = useState("");
   const [showGifts, setShowGifts] = useState(false);
+  const [shareMsg, setShareMsg] = useState("");
+  const [viewerCount, setViewerCount] = useState(0);
+  const [hearts, setHearts] = useState([]);
+  const heartIdRef = useRef(0);
 
   const clientRef = useRef(null);
   const localTracksRef = useRef({ cam: null, mic: null });
@@ -59,6 +65,13 @@ export default function LiveRoomPage() {
     const leave = joinRoomPresence(roomId, user.uid, profile?.displayName || "User");
     return () => leave();
   }, [roomId, user, profile?.displayName]);
+
+  // Viewer count badge — same presence data AddGuestButton uses to build
+  // its invite list, just counted here for display.
+  useEffect(() => {
+    const unsub = listenParticipants(roomId, (list) => setViewerCount(list.length));
+    return () => unsub();
+  }, [roomId]);
 
   const isHost = room && user && room.hostUid === user.uid;
   const isCoHost = room && user && room.coHostUid === user.uid;
@@ -159,8 +172,10 @@ export default function LiveRoomPage() {
       if (onStage && !localTracksRef.current.cam) {
         try {
           await client.setClientRole("host");
-          const camTrack = await createCameraTrack();
-          const micTrack = await createMicTrack();
+          // Single combined request (one browser permission prompt for
+          // both devices) instead of two sequential ones — see
+          // createMicAndCameraTracks in lib/agora.js for why.
+          const { micTrack, camTrack } = await createMicAndCameraTracks();
           if (cancelled) {
             camTrack.close();
             micTrack.close();
@@ -173,7 +188,10 @@ export default function LiveRoomPage() {
         } catch (err) {
           console.error(err);
           const detail = err?.message || err?.code || "unknown error";
-          setError(`Could not start your camera (${detail}).`);
+          // One combined permission request means we can't always tell
+          // which device it was, so the message covers both rather than
+          // wrongly blaming the camera when it was actually the mic.
+          setError(`Could not start your camera/microphone (${detail}).`);
         }
       } else if (!onStage && localTracksRef.current.cam) {
         const { cam, mic } = localTracksRef.current;
@@ -196,6 +214,39 @@ export default function LiveRoomPage() {
     if (isHost) await endRoom(roomId);
     else if (isCoHost) await removeCoHost(roomId); // leaving video, not the whole room
     router.push("/rooms");
+  }
+
+  async function handleShare() {
+    const url = `${window.location.origin}/live/${roomId}`;
+    const shareData = { title: room?.title || "Milaap Live", text: `${room?.hostName} is live on Milaap — join in!`, url };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        // AbortError just means the user closed the native share sheet — not a real failure
+        if (err?.name !== "AbortError") console.error(err);
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMsg("Link copied!");
+      setTimeout(() => setShareMsg(""), 2000);
+    } catch (err) {
+      console.error(err);
+      setShareMsg("Couldn't copy link");
+      setTimeout(() => setShareMsg(""), 2000);
+    }
+  }
+
+  function sendHeart() {
+    const id = heartIdRef.current++;
+    const emoji = ["❤️", "💖", "💕", "💗"][id % 4];
+    const x = 15 + Math.random() * 70; // keep clear of the edges
+    setHearts((h) => [...h, { id, emoji, x }]);
+    setTimeout(() => {
+      setHearts((h) => h.filter((heart) => heart.id !== id));
+    }, 2600);
   }
 
   function toggleMic() {
@@ -224,8 +275,13 @@ export default function LiveRoomPage() {
           </button>
           <div>
             <p className="font-display text-sm font-bold text-ink">{room.title}</p>
-            <p className="text-xs text-mist">Hosted by {room.hostName}</p>
+            <p className="text-xs text-mist">
+              Hosted by {room.hostName} · 👀 {viewerCount}
+            </p>
           </div>
+          {!isHost && (
+            <FollowButton target={{ uid: room.hostUid, displayName: room.hostName }} />
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isHost && (
@@ -238,6 +294,13 @@ export default function LiveRoomPage() {
           )}
           {isHost && <BackgroundPicker roomId={String(roomId)} current={room.background} />}
           <button
+            onClick={handleShare}
+            aria-label="Share this room"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-panel text-sm ring-1 ring-white/10"
+          >
+            📤
+          </button>
+          <button
             onClick={handleEndOrLeave}
             className="rounded-full bg-panel px-3 py-1.5 text-xs font-semibold text-neon-pink ring-1 ring-neon-pink/30"
           >
@@ -245,6 +308,9 @@ export default function LiveRoomPage() {
           </button>
         </div>
       </header>
+      {shareMsg && (
+        <p className="mx-4 -mt-1 mb-1 text-center text-[11px] text-mist">{shareMsg}</p>
+      )}
 
       {!AGORA_APP_ID && (
         <p className="mx-4 rounded-lg bg-panel p-3 text-xs text-gold">
@@ -257,6 +323,7 @@ export default function LiveRoomPage() {
       <div className="relative mx-4 aspect-[9/16] max-h-[52vh] overflow-hidden rounded-2xl bg-panel">
         <GiftFeed roomId={String(roomId)} />
         <EntranceBanner roomId={String(roomId)} />
+        <FloatingHearts hearts={hearts} />
 
         <div className="flex h-full w-full">
           <div ref={primaryRef} className="h-full w-full flex-1" />
@@ -320,6 +387,7 @@ export default function LiveRoomPage() {
           uid={user.uid}
           name={profile?.displayName || "User"}
           onOpenGifts={!isHost ? () => setShowGifts(true) : undefined}
+          onSendHeart={sendHeart}
         />
       </div>
     </main>

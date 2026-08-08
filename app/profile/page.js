@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
@@ -14,14 +14,25 @@ import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
 import FramedAvatar from "@/components/FramedAvatar";
+import { useInstall, isIOS } from "@/lib/InstallContext";
 
 export default function ProfilePage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+  const { installed, promptInstall } = useInstall();
+  const [showIosHelp, setShowIosHelp] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
+
+  async function handleInstallClick() {
+    if (isIOS()) {
+      setShowIosHelp((v) => !v);
+      return;
+    }
+    await promptInstall();
+  }
 
   if (loading || !user) {
     return (
@@ -116,6 +127,23 @@ export default function ProfilePage() {
               <span className="rounded-full bg-panel2 px-2 py-0.5 text-[10px] text-mist">Soon</span>
             </div>
           )
+        )}
+        <button
+          onClick={handleInstallClick}
+          disabled={installed}
+          className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-ink/90 disabled:text-ink/40"
+        >
+          📲 Install App
+          {installed ? (
+            <span className="text-[10px] text-mist">Installed ✓</span>
+          ) : (
+            <span className="text-mist">›</span>
+          )}
+        </button>
+        {showIosHelp && (
+          <p className="px-4 py-3 text-xs text-mist">
+            Share button (□↑) dabayein → <span className="font-semibold text-ink">"Add to Home Screen"</span> choose karein.
+          </p>
         )}
       </section>
 

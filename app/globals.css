@@ -70,3 +70,23 @@ html {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Floating hearts on the live-room video stage (tap the ❤️ button) */
+@keyframes float-heart {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-10%) scale(1);
+  }
+  100% {
+    transform: translateY(-260px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+.animate-float-heart {
+  animation: float-heart 2.6s ease-out forwards;
+}
