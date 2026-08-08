@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Voice DM notes — path is voice-messages/{convoId}/{uid}_{timestamp}.webm.
+    // Anyone signed in can read (simplest: message doc access already
+    // gates who *knows* the URL) and only the uploader can write their own file.
+    match /voice-messages/{convoId}/{fileName} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        fileName.matches(request.auth.uid + '_.*');
+      allow update, delete: if false;
+    }
+  }
+}
