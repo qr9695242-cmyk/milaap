@@ -14,7 +14,7 @@ export async function POST(req){
 
     // generate a random uid (number)
     const uid = Math.floor(Math.random()*1000000)
-    const expireSeconds = 60 * 10 // 10 minutes
+    const expireSeconds = 60 * 2 // 2 minutes for premium short-lived tokens
     const currentTimestamp = Math.floor(Date.now() / 1000)
     const privilegeExpiredTs = currentTimestamp + expireSeconds
 

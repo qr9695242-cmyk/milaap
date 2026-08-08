@@ -2,13 +2,18 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { listRooms, createRoom } from '../../lib/firestore/rooms'
+import { initFirebaseClient, signInAnonymously } from '../../lib/firebase/client'
 
 export default function RoomsPage(){
   const [rooms, setRooms] = useState([])
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [userUid, setUserUid] = useState(null)
 
   useEffect(()=>{
+    initFirebaseClient()
+    // ensure anonymous auth so we can set owner & participants
+    signInAnonymously().catch(()=>{})
     let mounted = true
     listRooms().then(r=>{ if(mounted){ setRooms(r); setLoading(false)} }).catch(()=>setLoading(false))
     return ()=>{ mounted = false }
@@ -19,7 +24,10 @@ export default function RoomsPage(){
     if(!name) return
     setLoading(true)
     try{
-      const id = await createRoom(name)
+      // get auth uid if available
+      const { auth } = initFirebaseClient()
+      const uid = auth.currentUser?.uid || null
+      const id = await createRoom(name, uid)
       setName('')
       const updated = await listRooms()
       setRooms(updated)
@@ -46,6 +54,7 @@ export default function RoomsPage(){
               <div>
                 <div className="font-semibold">{r.name}</div>
                 <div className="text-sm text-gray-500">Channel: {r.channel}</div>
+                {r.owner && <div className="text-xs text-gray-400">Host: {r.owner}</div>}
               </div>
               <a className="bg-green-600 text-white px-3 py-2 rounded" href={`/rooms/${r.id}`}>Join</a>
             </li>
