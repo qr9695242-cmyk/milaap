@@ -210,94 +210,90 @@ service cloud.firestore {
 
       // Who's currently in the room (self-managed heartbeat) — lets the
       // host see people to invite as a video co-host (lib/coHost.js).
--      match /participants/{uid} {
--        allow read: if request.auth != null;
--        allow write: if request.auth != null && request.auth.uid == uid;
--      }
-+      match /participants/{uid} {
-+        // Any signed-in user can read the participant list.
-+        allow read: if request.auth != null;
-+
-+        // Create: a participant record may be created by the participant
-+        // themself (client registers on join). Admins may also create for
-+        // recovery/debugging purposes.
-+        allow create: if request.auth != null && (
-+          request.auth.uid == uid || isAdmin()
-+        );
-+
-+        // Update: allow the participant to update their own record, or an
-+        // admin to update anything. Allow the room host to toggle the
-+        // `isMuted` flag for any participant (this is how host mute works).
-+        allow update: if request.auth != null && (
-+          request.auth.uid == uid ||
-+          isAdmin() ||
-+          (
-+            // only the host may change another participant's isMuted flag
-+            get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid &&
-+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["isMuted"])
-+          )
-+        );
-+
-+        // Delete: participants may remove their own presence (leave), and
-+        // the host or an admin may remove (kick) participants.
-+        allow delete: if request.auth != null && (
-+          request.auth.uid == uid || isAdmin() || get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid
-+        );
-+      }
-     }
+      match /participants/{uid} {
+        // Any signed-in user can read the participant list.
+        allow read: if request.auth != null;
 
-     // Recharge requests — user submits; only an admin (or ideally a Cloud
-     // Function) should approve/reject.
-     match /rechargeRequests/{reqId} {
-       allow create: if request.auth != null
-         && request.resource.data.uid == request.auth.uid
-         && request.resource.data.status == "pending";
-       allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
-       allow update: if isAdmin();
-       allow delete: if false;
-     }
+        // Create: a participant record may be created by the participant
+        // themself (client registers on join). Admins may also create for
+        // recovery/debugging purposes.
+        allow create: if request.auth != null && (
+          request.auth.uid == uid || isAdmin()
+        );
 
-     // Diamond withdraw (cashout) requests — host submits (diamonds already
-     // deducted client-side in the same transaction, see lib/wallet.js);
-     // only an admin can approve (mark paid) or reject (refunds diamonds).
-     match /withdrawRequests/{reqId} {
-       allow create: if request.auth != null
-         && request.resource.data.uid == request.auth.uid
-         && request.resource.data.status == "pending";
-       allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
-       allow update: if isAdmin();
-       allow delete: if false;
-     }
+        // Update: allow the participant to update their own record, or an
+        // admin to update anything. Allow the room host to toggle the
+        // `isMuted` flag for any participant (this is how host mute works).
+        allow update: if request.auth != null && (
+          request.auth.uid == uid ||
+          isAdmin() ||
+          (
+            // only the host may change another participant's isMuted flag
+            get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["isMuted"])
+          )
+        );
 
-     // Private DM conversations — id is "{uid1}_{uid2}" (sorted), members
-     // array holds both uids. Either member can read/update (last message
-     // preview, updatedAt); only a member can create it.
-     match /conversations/{convoId} {
-       allow read: if request.auth != null && request.auth.uid in resource.data.members;
-       allow create: if request.auth != null && request.auth.uid in request.resource.data.members;
-       allow update: if request.auth != null && request.auth.uid in resource.data.members;
-       allow delete: if false;
+        // Delete: participants may remove their own presence (leave), and
+        // the host or an admin may remove (kick) participants.
+        allow delete: if request.auth != null && (
+          request.auth.uid == uid || isAdmin() || get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid
+        );
+      }
+    }
 
-       // Messages (text + voice notes) inside a conversation
-       match /messages/{messageId} {
-         allow read: if request.auth != null &&
-           request.auth.uid in get(/databases/$(database)/documents/conversations/$(convoId)).data.members;
-         allow create: if request.auth != null && request.resource.data.uid == request.auth.uid &&
-           request.auth.uid in get(/databases/$(database)/documents/conversations/$(convoId)).data.members;
-         allow update, delete: if false;
-       }
-     }
+    // Recharge requests — user submits; only an admin (or ideally a Cloud
+    // Function) should approve/reject.
+    match /rechargeRequests/{reqId} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == "pending";
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
 
-     // Families — leader manages settings; any signed-in member can update
-     // only the members list (join/leave) or totalDiamonds (contribute)
-     match /families/{familyId} {
-       allow read: if request.auth != null;
-       allow create: if request.auth != null && request.resource.data.leaderId == request.auth.uid;
-       allow update: if request.auth != null && (
-         resource.data.leaderId == request.auth.uid ||
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(["members", "totalDiamonds", "level"])
-       );
-       allow delete: if request.auth != null && resource.data.leaderId == request.auth.uid;
-     }
-   }
+    // Diamond withdraw (cashout) requests — host submits (diamonds already
+    // deducted client-side in the same transaction, see lib/wallet.js);
+    // only an admin can approve (mark paid) or reject (refunds diamonds).
+    match /withdrawRequests/{reqId} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == "pending";
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Private DM conversations — id is "{uid1}_{uid2}" (sorted), members
+    // array holds both uids. Either member can read/update (last message
+    // preview, updatedAt); only a member can create it.
+    match /conversations/{convoId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.members;
+      allow create: if request.auth != null && request.auth.uid in request.resource.data.members;
+      allow update: if request.auth != null && request.auth.uid in resource.data.members;
+      allow delete: if false;
+
+      // Messages (text + voice notes) inside a conversation
+      match /messages/{messageId} {
+        allow read: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(convoId)).data.members;
+        allow create: if request.auth != null && request.resource.data.uid == request.auth.uid &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(convoId)).data.members;
+        allow update, delete: if false;
+      }
+    }
+
+    // Families — leader manages settings; any signed-in member can update
+    // only the members list (join/leave) or totalDiamonds (contribute)
+    match /families/{familyId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.leaderId == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.leaderId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["members", "totalDiamonds", "level"])
+      );
+      allow delete: if request.auth != null && resource.data.leaderId == request.auth.uid;
+    }
+  }
  }
