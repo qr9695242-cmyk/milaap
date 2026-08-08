@@ -5,7 +5,7 @@ import { listenChat, sendChatMessage } from "@/lib/chat";
 import { VIP_TIERS } from "@/lib/vip";
 import VipBadge from "@/components/VipBadge";
 
-export default function LiveChat({ roomId, uid, name, vipLevel = 0 }) {
+export default function LiveChat({ roomId, uid, name, vipLevel = 0, onOpenGifts }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [showEmojis, setShowEmojis] = useState(false);
@@ -102,6 +102,16 @@ export default function LiveChat({ roomId, uid, name, vipLevel = 0 }) {
           maxLength={300}
           className="flex-1 rounded-full bg-panel2 px-4 py-2 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
         />
+        {onOpenGifts && (
+          <button
+            type="button"
+            onClick={onOpenGifts}
+            aria-label="Send a gift"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel text-lg ring-1 ring-white/5"
+          >
+            🎁
+          </button>
+        )}
         <button
           type="submit"
           className="rounded-full bg-glow-gradient px-4 py-2 text-sm font-semibold text-ink"

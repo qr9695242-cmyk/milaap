@@ -1,6 +1,7 @@
 "use client";
 
 import { PRIORITY_SEAT_INDEXES } from "@/lib/vip";
+import FramedAvatar from "./FramedAvatar";
 
 export default function SeatGrid({ seats, myUid, onSeatTap }) {
   return (
@@ -16,24 +17,30 @@ export default function SeatGrid({ seats, myUid, onSeatTap }) {
             onClick={() => onSeatTap(seat)}
             className="flex flex-col items-center gap-1"
           >
-            <div
-              className={`relative flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold ${
-                occupied
-                  ? isMe
-                    ? "bg-glow-gradient text-ink ring-2 ring-white/60"
-                    : isVip
-                    ? "bg-panel2 text-ink ring-2 ring-gold"
-                    : "bg-panel2 text-ink ring-1 ring-white/10"
-                  : isPriority
-                  ? "border border-dashed border-gold/40 text-gold/60"
-                  : "border border-dashed border-white/15 text-mist"
-              }`}
-            >
-              {occupied ? (seat.name || "?").charAt(0).toUpperCase() : "+"}
-              {isVip && (
-                <span className="absolute -right-1 -top-1 text-xs">👑</span>
-              )}
-            </div>
+            {occupied ? (
+              <div className="relative">
+                <FramedAvatar
+                  frameId={seat.frame}
+                  name={seat.name}
+                  size={56}
+                  ring={!seat.frame}
+                />
+                {isMe && !seat.frame && (
+                  <span className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-white/60" />
+                )}
+                {isVip && <span className="absolute -right-1 -top-1 text-xs">👑</span>}
+              </div>
+            ) : (
+              <div
+                className={`flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold ${
+                  isPriority
+                    ? "border border-dashed border-gold/40 text-gold/60"
+                    : "border border-dashed border-white/15 text-mist"
+                }`}
+              >
+                +
+              </div>
+            )}
             <span className="max-w-[56px] truncate text-[10px] text-mist">
               {occupied ? seat.name : `Seat ${seat.seatIndex + 1}`}
             </span>

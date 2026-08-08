@@ -11,7 +11,7 @@ import { GIFT_CATALOG, sendGift } from "@/lib/gifts";
  *    renders above the gifts so any seated user can be gifted, not just
  *    a hardcoded host.
  */
-export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, targets, myCoins }) {
+export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, targets, myCoins, onClose }) {
   const [sending, setSending] = useState(null);
   const [error, setError] = useState("");
   const [selectedUid, setSelectedUid] = useState(toUid || targets?.[0]?.uid || "");
@@ -57,6 +57,11 @@ export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, targ
   if (targets && targets.length === 0) {
     return (
       <div className="border-t border-white/5 px-3 py-2">
+        {onClose && (
+          <div className="mb-1 flex justify-end">
+            <button onClick={onClose} className="text-xs text-mist">✕ Close</button>
+          </div>
+        )}
         <p className="text-[11px] text-mist">
           Gift bhejne ke liye room mein koi aur seated ho tabhi option aayega.
         </p>
@@ -66,6 +71,11 @@ export default function GiftBar({ roomId, fromUid, fromName, toUid, toName, targ
 
   return (
     <div className="border-t border-white/5 px-3 py-2">
+      {onClose && (
+        <div className="mb-1 flex justify-end">
+          <button onClick={onClose} className="text-xs text-mist">✕ Close</button>
+        </div>
+      )}
       {targets && (
         <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
           {targets.map((t) => (
