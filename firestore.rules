@@ -211,8 +211,34 @@ service cloud.firestore {
       // Who's currently in the room (self-managed heartbeat) — lets the
       // host see people to invite as a video co-host (lib/coHost.js).
       match /participants/{uid} {
+        // Any signed-in user can read the participant list.
         allow read: if request.auth != null;
-        allow write: if request.auth != null && request.auth.uid == uid;
+
+        // Create: a participant record may be created by the participant
+        // themself (client registers on join). Admins may also create for
+        // recovery/debugging purposes.
+        allow create: if request.auth != null && (
+          request.auth.uid == uid || isAdmin()
+        );
+
+        // Update: allow the participant to update their own record, or an
+        // admin to update anything. Allow the room host to toggle the
+        // `isMuted` flag for any participant (this is how host mute works).
+        allow update: if request.auth != null && (
+          request.auth.uid == uid ||
+          isAdmin() ||
+          (
+            // only the host may change another participant's isMuted flag
+            get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["isMuted"])
+          )
+        );
+
+        // Delete: participants may remove their own presence (leave), and
+        // the host or an admin may remove (kick) participants.
+        allow delete: if request.auth != null && (
+          request.auth.uid == uid || isAdmin() || get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid
+        );
       }
     }
 
@@ -270,4 +296,4 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.leaderId == request.auth.uid;
     }
   }
-}
+ }
