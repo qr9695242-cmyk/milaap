@@ -32,6 +32,8 @@ export default function SeatActionSheet({
 
   const actions = occupied
     ? [
+        { label: "On Mic", onClick: () => onUnmute?.(seat) },
+        onInvite && { label: "Invite", onClick: () => onInvite(seat) },
         {
           label: seat.muted ? "Unmute" : "Mute",
           onClick: () => (seat.muted ? onUnmute?.(seat) : onMute?.(seat)),
@@ -39,7 +41,7 @@ export default function SeatActionSheet({
         { label: "Remove from seat", onClick: () => onKick?.(seat), danger: true },
         { label: "Lock All", onClick: () => onLockAll?.() },
         { label: "Unlock All", onClick: () => onUnlockAll?.() },
-      ]
+      ].filter(Boolean)
     : [
         onInvite && { label: "Invite", onClick: () => onInvite(seat) },
         {
