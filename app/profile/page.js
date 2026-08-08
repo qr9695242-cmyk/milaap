@@ -13,6 +13,7 @@ import { findItem } from "@/lib/decorations";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
+import FramedAvatar from "@/components/FramedAvatar";
 
 export default function ProfilePage() {
   const { user, profile, loading } = useAuth();
@@ -35,7 +36,6 @@ export default function ProfilePage() {
   const isSuperAdmin = role === "superadmin";
   const vipTier = vipLevelForSpend(profile?.totalRechargedRs);
   const hostTier = hostLevelForDiamonds(profile?.diamonds);
-  const equippedFrame = profile?.equippedFrame ? findItem("frame", profile.equippedFrame) : null;
   const equippedVehicle = profile?.equippedVehicle ? findItem("vehicle", profile.equippedVehicle) : null;
 
   return (
@@ -43,14 +43,7 @@ export default function ProfilePage() {
       <section className="bg-glow-gradient px-5 pb-8 pt-10">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div
-              className="flex h-16 w-16 items-center justify-center rounded-full p-[3px]"
-              style={{ background: equippedFrame ? equippedFrame.gradient : "transparent" }}
-            >
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 text-2xl font-bold text-ink ring-2 ring-white/40">
-                {(profile?.displayName || "U").charAt(0).toUpperCase()}
-              </div>
-            </div>
+            <FramedAvatar frameId={profile?.equippedFrame} name={profile?.displayName} size={64} />
             <div>
               <p className="font-display text-lg font-extrabold text-ink">
                 {profile?.displayName || "User"} {equippedVehicle && <span title={equippedVehicle.name}>{equippedVehicle.emoji}</span>}

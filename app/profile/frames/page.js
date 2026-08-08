@@ -90,7 +90,14 @@ export default function FramesShopPage() {
                   ringColor: "transparent",
                 }}
               >
-                {item.free ? "🚫" : item.emoji}
+                {item.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.image} alt={item.name} className="h-14 w-14 object-contain" draggable={false} />
+                ) : item.free ? (
+                  "🚫"
+                ) : (
+                  item.emoji
+                )}
               </div>
               <p className="mt-2 line-clamp-1 text-center text-[11px] font-semibold text-ink">{item.name}</p>
               <p className="text-[9px] uppercase tracking-wide text-mist">{style.label}</p>

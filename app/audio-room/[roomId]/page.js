@@ -3,12 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
-import { listenRoom, endRoom, takeSeat, leaveSeat, toggleSeatMute } from "@/lib/rooms";
+import { listenRoom, endRoom, takeSeat, leaveSeat, toggleSeatMute, announceEntrance } from "@/lib/rooms";
+import { findBackground } from "@/lib/backgrounds";
+import { findItem } from "@/lib/decorations";
 import { createAgoraClient, createMicTrack, fetchAgoraToken, AGORA_APP_ID } from "@/lib/agora";
 import SeatGrid from "@/components/SeatGrid";
 import LiveChat from "@/components/LiveChat";
 import GiftBar from "@/components/GiftBar";
 import GiftFeed from "@/components/GiftFeed";
+import EntranceBanner from "@/components/EntranceBanner";
+import BackgroundPicker from "@/components/BackgroundPicker";
 
 export default function AudioRoomPage() {
   const { roomId } = useParams();
@@ -34,6 +38,22 @@ export default function AudioRoomPage() {
 
   const isHost = room && user && room.hostUid === user.uid;
   const mySeat = room?.seats?.find((s) => s.uid === user?.uid);
+
+  // Announce this user's ride once per visit ("Ride in style when you enter a room")
+  const announcedRef = useRef(false);
+  useEffect(() => {
+    if (!room || !user || announcedRef.current) return;
+    announcedRef.current = true;
+    const vehicleId = profile?.equippedVehicle;
+    const vehicle = vehicleId ? findItem("vehicle", vehicleId) : null;
+    announceEntrance(roomId, {
+      uid: user.uid,
+      name: profile?.displayName || "User",
+      vehicleId: vehicle?.id,
+      vehicleName: vehicle?.name,
+      vehicleImage: vehicle?.image,
+    });
+  }, [room?.id, user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Join the Agora audio channel as soon as we land in the room (everyone can listen)
   useEffect(() => {
@@ -103,7 +123,14 @@ export default function AudioRoomPage() {
       await leaveSeat(roomId, seat.seatIndex);
     } else {
       try {
-        await takeSeat(roomId, seat.seatIndex, user.uid, profile?.displayName || "User");
+        await takeSeat(
+          roomId,
+          seat.seatIndex,
+          user.uid,
+          profile?.displayName || "User",
+          profile?.vipLevel || 0,
+          profile?.equippedFrame || null
+        );
       } catch (e) {
         // Seat got taken by someone else a moment ago — ignore
       }
@@ -131,8 +158,10 @@ export default function AudioRoomPage() {
     );
   }
 
+  const bg = findBackground(room.background);
+
   return (
-    <main className="flex min-h-screen flex-col bg-void">
+    <main className="flex min-h-screen flex-col bg-void" style={{ background: bg.css }}>
       <header className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
           <button onClick={handleEndOrLeave} aria-label="Back" className="text-lg text-ink/80">
@@ -143,12 +172,15 @@ export default function AudioRoomPage() {
             <p className="text-xs text-mist">Hosted by {room.hostName}</p>
           </div>
         </div>
-        <button
-          onClick={handleEndOrLeave}
-          className="rounded-full bg-panel px-3 py-1.5 text-xs font-semibold text-neon-pink ring-1 ring-neon-pink/30"
-        >
-          {isHost ? "End" : "Leave"}
-        </button>
+        <div className="flex items-center gap-2">
+          {isHost && <BackgroundPicker roomId={String(roomId)} current={room.background} />}
+          <button
+            onClick={handleEndOrLeave}
+            className="rounded-full bg-panel px-3 py-1.5 text-xs font-semibold text-neon-pink ring-1 ring-neon-pink/30"
+          >
+            {isHost ? "End" : "Leave"}
+          </button>
+        </div>
       </header>
 
       {!AGORA_APP_ID && (
@@ -160,6 +192,7 @@ export default function AudioRoomPage() {
 
       <div className="relative mt-4">
         <GiftFeed roomId={String(roomId)} />
+        <EntranceBanner roomId={String(roomId)} />
         <SeatGrid seats={room.seats || []} myUid={user.uid} onSeatTap={handleSeatTap} />
       </div>
 

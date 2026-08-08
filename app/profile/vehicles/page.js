@@ -84,10 +84,17 @@ export default function VehiclesShopPage() {
               className={`flex flex-col items-center rounded-xl bg-panel p-3 ring-1 ${style.ring} ${style.glow}`}
             >
               <div
-                className="flex h-16 w-16 items-center justify-center rounded-xl text-3xl"
+                className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl text-3xl"
                 style={{ background: item.free ? "rgba(255,255,255,0.05)" : item.gradient }}
               >
-                {item.free ? "🚫" : item.emoji}
+                {item.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.image} alt={item.name} className="h-full w-full object-cover" draggable={false} />
+                ) : item.free ? (
+                  "🚫"
+                ) : (
+                  item.emoji
+                )}
               </div>
               <p className="mt-2 line-clamp-1 text-center text-[11px] font-semibold text-ink">{item.name}</p>
               <p className="text-[9px] uppercase tracking-wide text-mist">{style.label}</p>
