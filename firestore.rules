@@ -26,9 +26,14 @@ service cloud.firestore {
 
     // Users can read any profile, but only edit their own (or an admin, for recharge approval).
     // Exception: followersCount/followingCount are counters that the OTHER
-    // side of a follow/unfollow needs to bump on your doc (see lib/follow.js).
+    // side of a follow/unfollow needs to bump on your doc (see lib/follow.js),
+    // and `diamonds` is what the OTHER side of a gift needs to credit onto
+    // the receiving host's doc when someone sends them a gift (see
+    // lib/gifts.js sendGift() — the sender's transaction credits diamonds
+    // directly onto the host's user doc, so without this the gift-level
+    // feature's diamond payout silently fails with permission-denied).
     // Same MVP caveat as coins/diamonds elsewhere in this file — a fully
-    // locked-down version would move counter writes into a Cloud Function.
+    // locked-down version would move these writes into a Cloud Function.
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == userId;
@@ -39,8 +44,7 @@ service cloud.firestore {
           !("role" in request.resource.data.diff(resource.data).affectedKeys()) && (
             request.auth.uid == userId ||
             isAdmin() ||
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["followersCount"]) ||
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["followingCount"])
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["followersCount", "followingCount", "diamonds"])
           )
         )
       );
