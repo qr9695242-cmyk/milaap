@@ -169,7 +169,17 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         resource.data.hostUid == request.auth.uid ||
         isAdmin() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["seats"])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["seats"]) ||
+        // Co-host invite accept/decline, or the current co-host leaving —
+        // only the person becoming/leaving co-host may touch these keys.
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["coHostUid", "coHostName", "coHostInvite"]) &&
+          (
+            !("coHostUid" in request.resource.data) ||
+            request.resource.data.coHostUid == request.auth.uid ||
+            resource.data.coHostUid == request.auth.uid
+          )
+        )
       );
       allow delete: if request.auth != null && resource.data.hostUid == request.auth.uid;
 
@@ -185,6 +195,20 @@ service cloud.firestore {
         allow read: if request.auth != null;
         allow create: if request.auth != null && request.resource.data.fromUid == request.auth.uid;
         allow update, delete: if false;
+      }
+
+      // Vehicle entrance announcements ("rides in on...") — short-lived feed
+      match /entrances/{entranceId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // Who's currently in the room (self-managed heartbeat) — lets the
+      // host see people to invite as a video co-host (lib/coHost.js).
+      match /participants/{uid} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == uid;
       }
     }
 
