@@ -2,10 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
-import { VIP_TIERS, vipLevelForSpend, nextVipTier } from "@/lib/vip";
-import BottomNav from "@/components/BottomNav";
+import { VIP_TIERS, nextVipTier } from "@/lib/vip";
 
 export default function VipPage() {
   const { user, profile, loading } = useAuth();
@@ -16,72 +14,59 @@ export default function VipPage() {
   }, [loading, user, router]);
 
   if (loading || !user) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-void">
-        <p className="text-mist text-sm">Loading…</p>
-      </main>
-    );
+    return <div className="flex min-h-screen items-center justify-center bg-void text-mist text-sm">Loading…</div>;
   }
 
-  const spend = profile?.totalRechargedRs ?? 0;
-  const current = vipLevelForSpend(spend);
-  const next = nextVipTier(spend);
-  const progressPct = next
-    ? Math.round(((spend - current.minSpendRs) / (next.minSpendRs - current.minSpendRs)) * 100)
-    : 100;
+  const myLevel = profile?.vipLevel || 0;
+  const myTier = VIP_TIERS[Math.max(0, Math.min(myLevel, VIP_TIERS.length - 1))];
+  const next = nextVipTier(profile?.totalRechargedRs || 0);
 
   return (
-    <main className="min-h-screen bg-void pb-28">
-      <section
-        className="px-5 pb-8 pt-10"
-        style={{ background: `linear-gradient(135deg, ${current.color}55, #0B0713)` }}
-      >
-        <Link href="/profile" className="text-lg text-ink/80">←</Link>
-        <p className="mt-2 text-xs text-mist">Your tier</p>
-        <h1 className="font-display text-2xl font-extrabold text-ink">{current.name}</h1>
-        <p className="mt-1 text-xs text-mist">Lifetime recharge: Rs {spend}</p>
+    <div className="min-h-screen bg-void pb-10">
+      <div className="flex items-center gap-3 px-4 py-4">
+        <button onClick={() => router.back()} aria-label="Back" className="flex h-8 w-8 items-center justify-center rounded-full bg-panel text-ink ring-1 ring-white/10">←</button>
+        <h1 className="font-display text-base font-bold text-ink">VIP / SVIP</h1>
+      </div>
 
+      <div className="mx-4 rounded-2xl bg-panel p-4 ring-1 ring-white/10">
+        <p className="text-sm text-mist">Your tier</p>
+        <p className="mt-1 text-xl font-bold" style={{ color: myTier.color }}>{myTier.name}</p>
+        <p className="mt-1 text-[11px] text-mist">Lifetime recharge: Rs {(profile?.totalRechargedRs || 0).toLocaleString()}</p>
         {next && (
-          <div className="mt-4">
-            <div className="h-2 overflow-hidden rounded-full bg-panel">
-              <div
-                className="h-full bg-glow-gradient"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            <p className="mt-1 text-[11px] text-mist">
-              Rs {next.minSpendRs - spend} more to reach {next.name}
-            </p>
-          </div>
+          <p className="mt-2 text-[11px] text-gold">
+            {(next.minSpendRs - (profile?.totalRechargedRs || 0)).toLocaleString()} Rs more to reach {next.name}
+          </p>
         )}
-      </section>
+      </div>
 
-      <section className="mx-5 mt-4 space-y-3">
-        {VIP_TIERS.map((tier) => (
+      <div className="mx-4 mt-4 space-y-3">
+        {VIP_TIERS.filter((t) => t.level > 0).map((tier) => (
           <div
             key={tier.level}
-            className={`flex items-center justify-between rounded-xl p-4 ring-1 ${
-              tier.level === current.level
-                ? "bg-panel ring-white/30"
-                : "bg-panel/60 ring-white/5"
-            }`}
+            className={`rounded-2xl p-4 ring-1 ${myLevel === tier.level ? "ring-2" : "ring-white/10"}`}
+            style={{ background: `${tier.color}14`, borderColor: tier.color, ...(myLevel === tier.level ? { boxShadow: `0 0 0 1px ${tier.color}` } : {}) }}
           >
-            <div>
-              <p className="font-display text-sm font-bold" style={{ color: tier.color }}>
-                {tier.name}
-              </p>
-              <p className="text-xs text-mist">Rs {tier.minSpendRs}+ lifetime recharge</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold" style={{ color: tier.color }}>{tier.name}</p>
+              <p className="text-[11px] text-mist">Rs {tier.minSpendRs.toLocaleString()}+</p>
             </div>
-            {tier.level === current.level && (
-              <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold text-ink">
-                Current
-              </span>
-            )}
+            <div className="mt-2 flex flex-wrap gap-1">
+              {tier.emojis.map((e) => (
+                <span key={e} className="rounded-full bg-panel px-2 py-0.5 text-sm ring-1 ring-white/5">{e}</span>
+              ))}
+            </div>
+            <ul className="mt-2 space-y-1 text-[11px] text-mist">
+              {tier.entryEffect && <li>✓ Special room entry effect</li>}
+              {tier.prioritySeat && <li>✓ Priority seat when room is full</li>}
+              <li>✓ Exclusive chat emojis</li>
+            </ul>
           </div>
         ))}
-      </section>
+      </div>
 
-      <BottomNav />
-    </main>
+      <p className="mx-4 mt-4 text-center text-[11px] text-mist">
+        Recharge from Wallet to increase your lifetime spend and level up automatically.
+      </p>
+    </div>
   );
 }

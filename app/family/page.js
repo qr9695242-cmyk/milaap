@@ -2,133 +2,164 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
-import { listenFamilyLeaderboard, createFamily, joinFamily } from "@/lib/family";
-import BottomNav from "@/components/BottomNav";
+import { createFamily, listenFamily, listenFamilyLeaderboard, joinFamily, leaveFamily, contributeToFamily } from "@/lib/family";
 
-export default function FamilyBrowsePage() {
+export default function FamilyPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
-  const [families, setFamilies] = useState([]);
-  const [showCreate, setShowCreate] = useState(false);
+  const [family, setFamily] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
   const [name, setName] = useState("");
+  const [contribution, setContribution] = useState("100");
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
   useEffect(() => {
-    const unsub = listenFamilyLeaderboard(setFamilies);
+    const unsub = listenFamilyLeaderboard(setLeaderboard);
     return () => unsub();
   }, []);
 
-  // Already in a family? Go straight to it.
   useEffect(() => {
-    if (profile?.familyId) router.replace(`/family/${profile.familyId}`);
-  }, [profile?.familyId, router]);
+    if (!profile?.familyId) {
+      setFamily(null);
+      return;
+    }
+    return listenFamily(profile.familyId, setFamily);
+  }, [profile?.familyId]);
 
   async function handleCreate() {
     if (!name.trim()) return;
     setBusy(true);
+    setMessage("");
     try {
-      const id = await createFamily({
-        name: name.trim(),
-        leaderId: user.uid,
-        leaderName: profile?.displayName || "User",
-      });
-      router.push(`/family/${id}`);
+      await createFamily({ name: name.trim(), leaderId: user.uid, leaderName: profile?.displayName || "User" });
+      setName("");
+    } catch (err) {
+      setMessage(err.message || "Family create nahi ho saki.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleJoin(family) {
-    await joinFamily(family.id, user.uid, profile?.displayName || "User");
-    router.push(`/family/${family.id}`);
+  async function handleJoin(f) {
+    setBusy(true);
+    setMessage("");
+    try {
+      await joinFamily(f.id, user.uid, profile?.displayName || "User");
+    } catch (err) {
+      setMessage(err.message || "Join nahi ho saka.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleLeave() {
+    if (!family) return;
+    setBusy(true);
+    try {
+      await leaveFamily(family.id, { uid: user.uid, name: profile?.displayName || "User" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleContribute() {
+    if (!family) return;
+    const amt = Number(contribution);
+    if (!amt || amt <= 0) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      await contributeToFamily(family.id, user.uid, amt);
+    } catch (err) {
+      setMessage(err.message || "Contribute nahi ho saka.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (loading || !user) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-void">
-        <p className="text-mist text-sm">Loading…</p>
-      </main>
-    );
+    return <div className="flex min-h-screen items-center justify-center bg-void text-mist text-sm">Loading…</div>;
   }
 
   return (
-    <main className="min-h-screen bg-void pb-28">
-      <header className="flex items-center justify-between px-5 pt-6">
-        <div className="flex items-center gap-3">
-          <Link href="/profile" className="text-lg text-ink/80">←</Link>
-          <h1 className="font-display text-xl font-extrabold text-ink">Families</h1>
+    <div className="min-h-screen bg-void pb-10">
+      <div className="flex items-center gap-3 px-4 py-4">
+        <button onClick={() => router.back()} aria-label="Back" className="flex h-8 w-8 items-center justify-center rounded-full bg-panel text-ink ring-1 ring-white/10">←</button>
+        <h1 className="font-display text-base font-bold text-ink">Family</h1>
+      </div>
+
+      {message && <p className="mx-4 mb-2 text-[11px] text-neon-pink">{message}</p>}
+
+      {family ? (
+        <div className="mx-4 rounded-2xl bg-panel p-4 ring-1 ring-white/10">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-ink">{family.name}</p>
+            <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-semibold text-gold">Lv.{family.level}</span>
+          </div>
+          <p className="mt-1 text-[11px] text-mist">💎 {(family.totalDiamonds || 0).toLocaleString()} total</p>
+          <p className="mt-2 text-[11px] text-mist">{family.members?.length || 0} members</p>
+
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              type="number"
+              value={contribution}
+              onChange={(e) => setContribution(e.target.value)}
+              className="w-24 rounded-lg bg-panel2 px-3 py-2 text-sm text-ink outline-none ring-1 ring-white/10"
+            />
+            <button onClick={handleContribute} disabled={busy} className="flex-1 rounded-xl bg-glow-gradient py-2 text-xs font-bold text-ink disabled:opacity-50">
+              Contribute 💎
+            </button>
+          </div>
+          {family.leaderId !== user.uid && (
+            <button onClick={handleLeave} disabled={busy} className="mt-2 w-full rounded-xl bg-panel2 py-2 text-xs text-neon-pink disabled:opacity-50">
+              Leave Family
+            </button>
+          )}
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="rounded-full bg-glow-gradient px-4 py-2 text-xs font-semibold text-ink shadow-glow"
-        >
-          + Create
-        </button>
-      </header>
-
-      <section className="mx-5 mt-5 space-y-2">
-        {families.length === 0 ? (
-          <p className="text-xs text-mist">No families yet — start the first one.</p>
-        ) : (
-          families.map((f, i) => (
-            <div
-              key={f.id}
-              className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5"
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-5 text-center text-xs text-mist">#{i + 1}</span>
-                <div>
-                  <p className="text-sm font-semibold text-ink">{f.name}</p>
-                  <p className="text-xs text-mist">
-                    Lv.{f.level} · {f.members?.length ?? 0} members · ◆ {f.totalDiamonds}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => handleJoin(f)}
-                className="rounded-full bg-panel2 px-3 py-1.5 text-xs font-semibold text-ink ring-1 ring-white/10"
-              >
-                Join
-              </button>
-            </div>
-          ))
-        )}
-      </section>
-
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60">
-          <div className="w-full max-w-md rounded-t-2xl bg-panel p-5">
-            <h2 className="font-display text-lg font-bold text-ink">Create a family</h2>
+      ) : (
+        <div className="mx-4 rounded-2xl bg-panel p-4 ring-1 ring-white/10">
+          <p className="text-sm text-ink">Aap kisi family mein nahi hain.</p>
+          <div className="mt-3 flex gap-2">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Family name"
-              className="mt-4 w-full rounded-lg bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
+              className="flex-1 rounded-lg bg-panel2 px-3 py-2 text-sm text-ink outline-none ring-1 ring-white/10"
             />
-            <button
-              onClick={handleCreate}
-              disabled={busy}
-              className="mt-4 w-full rounded-full bg-glow-gradient py-3 text-sm font-semibold text-ink disabled:opacity-60"
-            >
-              {busy ? "Creating…" : "Create Family"}
-            </button>
-            <button
-              onClick={() => setShowCreate(false)}
-              className="mt-3 w-full py-2 text-center text-xs text-mist"
-            >
-              Cancel
+            <button onClick={handleCreate} disabled={busy} className="rounded-xl bg-glow-gradient px-4 py-2 text-xs font-bold text-ink disabled:opacity-50">
+              Create
             </button>
           </div>
         </div>
       )}
 
-      <BottomNav />
-    </main>
+      <div className="mx-4 mt-5">
+        <h2 className="mb-2 text-sm font-bold text-ink">Leaderboard</h2>
+        <div className="space-y-2">
+          {leaderboard.map((f, i) => (
+            <div key={f.id} className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5">
+              <div className="flex items-center gap-2">
+                <span className="w-5 text-center text-xs font-bold text-mist">#{i + 1}</span>
+                <span className="text-sm text-ink">{f.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {!profile?.familyId && f.id !== profile?.familyId && (
+                  <button onClick={() => handleJoin(f)} disabled={busy} className="rounded-full bg-panel2 px-2.5 py-1 text-[10px] text-ink ring-1 ring-white/10 disabled:opacity-50">
+                    Join
+                  </button>
+                )}
+                <span className="text-xs text-gold">💎 {(f.totalDiamonds || 0).toLocaleString()}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

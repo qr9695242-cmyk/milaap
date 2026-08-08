@@ -1,225 +1,151 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
-import { vipLevelForSpend } from "@/lib/vip";
-import { hostLevelForDiamonds } from "@/lib/hostLevel";
-import { giftLevelForSpend, nextGiftLevel, giftLevelProgress } from "@/lib/giftLevel";
-import { effectiveRole } from "@/lib/roles";
-import { findItem } from "@/lib/decorations";
-import BottomNav from "@/components/BottomNav";
-import NotificationBell from "@/components/NotificationBell";
-import ThemeToggle from "@/components/ThemeToggle";
+import { giftLevelForSpend, giftLevelProgress, nextGiftLevel } from "@/lib/giftLevel";
+import { hostLevelForDiamonds, hostLevelProgress, nextHostLevel } from "@/lib/hostLevel";
+import { VIP_TIERS } from "@/lib/vip";
 import FramedAvatar from "@/components/FramedAvatar";
 import GiftLevelBadge from "@/components/GiftLevelBadge";
-import { useInstall, isIOS } from "@/lib/InstallContext";
+import HostLevelBadge from "@/components/HostLevelBadge";
+import VipBadge from "@/components/VipBadge";
+import ThemeToggle from "@/components/ThemeToggle";
+import BottomNav from "@/components/BottomNav";
 
 export default function ProfilePage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
-  const { installed, promptInstall } = useInstall();
-  const [showIosHelp, setShowIosHelp] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
-  async function handleInstallClick() {
-    if (isIOS()) {
-      setShowIosHelp((v) => !v);
-      return;
+  if (loading || !user || !profile) {
+    return <div className="flex min-h-screen items-center justify-center bg-void text-mist text-sm">Loading…</div>;
+  }
+
+  const giftTier = giftLevelForSpend(profile.totalGiftedCoins || 0);
+  const giftNext = nextGiftLevel(profile.totalGiftedCoins || 0);
+  const giftProgress = giftLevelProgress(profile.totalGiftedCoins || 0);
+
+  const hostTier = hostLevelForDiamonds(profile.diamonds || 0);
+  const hostNext = nextHostLevel(profile.diamonds || 0);
+  const hostProgress = hostLevelProgress(profile.diamonds || 0);
+
+  const vipTier = VIP_TIERS[Math.max(0, Math.min(profile.vipLevel || 0, VIP_TIERS.length - 1))];
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await signOut(auth);
+      router.replace("/login");
+    } finally {
+      setSigningOut(false);
     }
-    await promptInstall();
   }
-
-  if (loading || !user) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-void">
-        <p className="text-mist text-sm">Loading…</p>
-      </main>
-    );
-  }
-
-  const role = effectiveRole(user, profile);
-  const isAdmin = role === "admin" || role === "superadmin";
-  const isSuperAdmin = role === "superadmin";
-  const vipTier = vipLevelForSpend(profile?.totalRechargedRs);
-  const hostTier = hostLevelForDiamonds(profile?.diamonds);
-  const giftTier = giftLevelForSpend(profile?.totalGiftedCoins);
-  const nextGift = nextGiftLevel(profile?.totalGiftedCoins);
-  const giftProgress = giftLevelProgress(profile?.totalGiftedCoins);
-  const equippedVehicle = profile?.equippedVehicle ? findItem("vehicle", profile.equippedVehicle) : null;
 
   return (
-    <main className="min-h-screen bg-void pb-28">
-      <section className="bg-glow-gradient px-5 pb-8 pt-10">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <FramedAvatar frameId={profile?.equippedFrame} name={profile?.displayName} photoURL={profile?.avatar} size={64} />
-            <div>
-              <p className="font-display text-lg font-extrabold text-ink">
-                {profile?.displayName || "User"} {equippedVehicle && <span title={equippedVehicle.name}>{equippedVehicle.emoji}</span>}
-              </p>
-              <p className="text-xs text-ink/80">{profile?.email}</p>
-              <div className="mt-1 flex flex-wrap gap-1">
-                <span className="inline-block rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-ink">
-                  {vipTier.name}
-                </span>
-                <span className="inline-block rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-ink">
-                  {hostTier.icon} {hostTier.name}
-                </span>
-                <GiftLevelBadge totalGiftedCoins={profile?.totalGiftedCoins} />
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/profile/edit"
-              className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-ink"
-            >
-              Edit
-            </Link>
-            <NotificationBell />
-            <ThemeToggle />
-          </div>
-        </div>
-        {profile?.bio && <p className="mt-3 text-xs text-ink/80">{profile.bio}</p>}
-      </section>
-
-      <section className="mx-5 -mt-4 flex divide-x divide-white/5 rounded-xl bg-panel ring-1 ring-white/5">
-        <Link href={`/u/${user.uid}/connections?tab=followers`} className="flex-1 py-3 text-center">
-          <p className="font-display text-base font-extrabold text-ink">{profile?.followersCount ?? 0}</p>
-          <p className="text-[10px] text-mist">Followers</p>
-        </Link>
-        <Link href={`/u/${user.uid}/connections?tab=following`} className="flex-1 py-3 text-center">
-          <p className="font-display text-base font-extrabold text-ink">{profile?.followingCount ?? 0}</p>
-          <p className="text-[10px] text-mist">Following</p>
-        </Link>
-        <div className="flex-1 py-3 text-center">
-          <p className="font-display text-base font-extrabold text-gold">◆ {profile?.diamonds ?? 0}</p>
-          <p className="text-[10px] text-mist">Diamonds</p>
-        </div>
-        <div className="flex-1 py-3 text-center">
-          <p className="font-display text-base font-extrabold text-diamond">● {profile?.coins ?? 0}</p>
-          <p className="text-[10px] text-mist">Coins</p>
-        </div>
-      </section>
-
-      <section className="mx-5 mt-4 rounded-xl bg-panel p-4 ring-1 ring-white/5">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-ink">Gift Level</p>
-          <p className="text-[10px] text-mist">
-            ● {profile?.totalGiftedCoins ?? 0} gifted
-          </p>
-        </div>
-        <div className="mt-2">
-          <GiftLevelBadge totalGiftedCoins={profile?.totalGiftedCoins} />
-        </div>
-        <div
-          className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-panel2 shadow-3d-btn-active"
-        >
-          <div
-            className="h-full rounded-full transition-[width] duration-500"
-            style={{ width: `${Math.round(giftProgress * 100)}%`, backgroundImage: giftTier.gradient }}
-          />
-        </div>
-        <p className="mt-1.5 text-[10px] text-mist">
-          {nextGift
-            ? `Lv.${nextGift.level} tak ${Math.max(0, nextGift.minCoins - (profile?.totalGiftedCoins ?? 0))} coins ka gift aur bhejna hai`
-            : "Max level pahunch gaye — Immortal Patron! 🏆"}
-        </p>
-      </section>
-
-      <section className="mx-5 mt-6 divide-y divide-white/5 rounded-xl bg-panel ring-1 ring-white/5">
-        {[
-          { label: "Wallet & Recharge", href: "/wallet" },
-          { label: "VIP / SVIP", href: "/vip" },
-          { label: "Daily Rewards / Lucky Box / Spin", href: "/rewards" },
-          { label: "Family", href: "/family" },
-          { label: "Agency", href: "/agency" },
-          { label: "Help & Support", href: "/help" },
-          { label: "Blocked Users", href: "/blocked" },
-          { label: "Frames", href: "/profile/frames" },
-          { label: "Vehicles / Cars", href: "/profile/vehicles" },
-          { label: "Friends / CP", href: "/profile/friends" },
-          { label: "Settings", href: "/settings" },
-        ].map((item) =>
-          item.href ? (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-ink/90"
-            >
-              {item.label}
-              <span className="text-mist">›</span>
-            </Link>
-          ) : (
-            <div
-              key={item.label}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-ink/40"
-            >
-              {item.label}
-              <span className="rounded-full bg-panel2 px-2 py-0.5 text-[10px] text-mist">Soon</span>
-            </div>
-          )
-        )}
-        <button
-          onClick={handleInstallClick}
-          disabled={installed}
-          className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-ink/90 disabled:text-ink/40"
-        >
-          📲 Install App
-          {installed ? (
-            <span className="text-[10px] text-mist">Installed ✓</span>
-          ) : (
-            <span className="text-mist">›</span>
-          )}
-        </button>
-        {showIosHelp && (
-          <p className="px-4 py-3 text-xs text-mist">
-            Share button (□↑) dabayein → <span className="font-semibold text-ink">"Add to Home Screen"</span> choose karein.
-          </p>
-        )}
-      </section>
-
-      {isAdmin && (
-        <div className="mx-5 mt-4 space-y-2">
-          <Link
-            href="/admin"
-            className="flex items-center justify-between rounded-xl bg-panel px-4 py-3 text-sm font-semibold text-gold ring-1 ring-gold/30"
-          >
-            Admin Panel
-            <span>›</span>
-          </Link>
-          <Link
-            href="/admin/analytics"
-            className="flex items-center justify-between rounded-xl bg-panel px-4 py-3 text-sm font-semibold text-diamond ring-1 ring-diamond/30"
-          >
-            Analytics Dashboard
-            <span>›</span>
-          </Link>
-          {isSuperAdmin && (
-            <p className="px-1 text-[10px] text-mist">
-              Signed in as Super Admin — you can manage other admins/moderators from the Admin Panel.
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="mx-5 mt-6">
-        <button
-          onClick={() => signOut(auth)}
-          className="w-full rounded-full bg-panel py-3 text-sm font-semibold text-neon-pink ring-1 ring-neon-pink/30"
-        >
-          Sign Out
-        </button>
+    <div className="min-h-screen bg-void pb-24">
+      <div className="flex items-center justify-between px-4 py-4">
+        <h1 className="font-display text-base font-bold text-ink">Profile</h1>
+        <ThemeToggle />
       </div>
 
+      {/* Identity */}
+      <div className="mx-4 flex items-center gap-4 rounded-2xl bg-panel p-4 ring-1 ring-white/10">
+        <FramedAvatar frameId={profile.equippedFrame} name={profile.displayName} photoURL={profile.avatar} size={64} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-bold text-ink">{profile.displayName}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <GiftLevelBadge totalGiftedCoins={profile.totalGiftedCoins || 0} compact />
+            <HostLevelBadge diamonds={profile.diamonds || 0} compact />
+            {vipTier?.level > 0 && <VipBadge vipLevel={profile.vipLevel || 0} compact />}
+          </div>
+          <div className="mt-2 flex gap-3 text-[11px] text-mist">
+            <span><span className="font-semibold text-ink">{profile.followersCount || 0}</span> Followers</span>
+            <span><span className="font-semibold text-ink">{profile.followingCount || 0}</span> Following</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Balance */}
+      <div className="mx-4 mt-3 grid grid-cols-2 gap-3">
+        <Link href="/wallet" className="rounded-2xl bg-panel p-4 ring-1 ring-white/10">
+          <p className="text-[11px] text-mist">Coins</p>
+          <p className="mt-1 text-lg font-bold text-gold">● {(profile.coins ?? 0).toLocaleString()}</p>
+        </Link>
+        <Link href="/wallet" className="rounded-2xl bg-panel p-4 ring-1 ring-white/10">
+          <p className="text-[11px] text-mist">Diamonds</p>
+          <p className="mt-1 text-lg font-bold text-diamond">💎 {(profile.diamonds ?? 0).toLocaleString()}</p>
+        </Link>
+      </div>
+
+      {/* Gift Level progress */}
+      <div className="mx-4 mt-3 rounded-2xl bg-panel p-4 ring-1 ring-white/10">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold text-ink">{giftTier.icon} Gift Level {giftTier.level}</p>
+          <p className="text-[11px] text-mist">{giftTier.name}</p>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-panel2">
+          <div className="h-full rounded-full bg-glow-gradient" style={{ width: `${Math.round(giftProgress * 100)}%` }} />
+        </div>
+        <p className="mt-1 text-[10px] text-mist">
+          {giftNext
+            ? `${(profile.totalGiftedCoins || 0).toLocaleString()} / ${giftNext.minCoins.toLocaleString()} coins gifted to reach Lv.${giftNext.level}`
+            : "Max level reached 🏆"}
+        </p>
+      </div>
+
+      {/* Host Level progress */}
+      <div className="mx-4 mt-3 rounded-2xl bg-panel p-4 ring-1 ring-white/10">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold text-ink">{hostTier.icon} {hostTier.name}</p>
+          <p className="text-[11px] text-mist">Lv.{hostTier.level}</p>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-panel2">
+          <div className="h-full rounded-full bg-glow-gradient" style={{ width: `${Math.round(hostProgress * 100)}%` }} />
+        </div>
+        <p className="mt-1 text-[10px] text-mist">
+          {hostNext
+            ? `${(profile.diamonds || 0).toLocaleString()} / ${hostNext.minDiamonds.toLocaleString()} diamonds received`
+            : "Max level reached 🔥"}
+        </p>
+      </div>
+
+      {/* Links */}
+      <div className="mx-4 mt-4 divide-y divide-white/5 rounded-2xl bg-panel ring-1 ring-white/10">
+        {[
+          { href: "/vip", label: "VIP / SVIP", icon: "👑" },
+          { href: "/rewards", label: "Daily Rewards", icon: "🎁" },
+          { href: "/family", label: "Family", icon: "👪" },
+          { href: "/agency", label: "Agency", icon: "🏢" },
+          { href: "/wallet", label: "Wallet", icon: "💰" },
+          { href: "/notifications", label: "Notifications", icon: "🔔" },
+          { href: "/blocked", label: "Blocked Users", icon: "🚫" },
+          { href: "/help", label: "Help & Support", icon: "❓" },
+        ].map((item) => (
+          <Link key={item.href} href={item.href} className="flex items-center gap-3 px-4 py-3.5 text-sm text-ink">
+            <span className="text-lg">{item.icon}</span>
+            <span className="flex-1">{item.label}</span>
+            <span className="text-mist">›</span>
+          </Link>
+        ))}
+      </div>
+
+      <button
+        onClick={handleSignOut}
+        disabled={signingOut}
+        className="mx-4 mt-4 w-full rounded-xl bg-panel py-3 text-center text-sm font-semibold text-neon-pink ring-1 ring-white/10 disabled:opacity-50"
+      >
+        {signingOut ? "Signing out…" : "Sign Out"}
+      </button>
+
       <BottomNav />
-    </main>
+    </div>
   );
 }

@@ -2,193 +2,139 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import {
   CHECKIN_REWARDS,
-  LUCKY_BOX_COST,
-  SPIN_WHEEL_COST,
   listenRewardStatus,
   claimDailyCheckin,
+  LUCKY_BOX_COST,
+  SPIN_WHEEL_COST,
   openLuckyBox,
   spinWheel,
 } from "@/lib/rewards";
-import BottomNav from "@/components/BottomNav";
 
 export default function RewardsPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState("checkin"); // checkin | box | spin
   const [status, setStatus] = useState({ streak: 0, lastCheckin: null });
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null);
-  const [error, setError] = useState(null);
+  const [message, setMessage] = useState("");
+  const [lastPrize, setLastPrize] = useState(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user) listenRewardStatus(user.uid, setStatus);
+    if (!user) return;
+    listenRewardStatus(user.uid, setStatus);
   }, [user]);
-
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const claimedToday = status.lastCheckin === todayKey;
 
   async function handleCheckin() {
     setBusy(true);
-    setError(null);
-    setMessage(null);
+    setMessage("");
     try {
-      const result = await claimDailyCheckin(user.uid);
-      if (result.alreadyClaimed) {
-        setMessage("Already claimed today — come back tomorrow!");
-      } else {
-        setMessage(`+${result.coinsAwarded} coins! Streak: Day ${result.streak}`);
-        setStatus((s) => ({ ...s, lastCheckin: todayKey, streak: result.streak }));
+      const res = await claimDailyCheckin(user.uid);
+      if (res.alreadyClaimed) setMessage("Aaj ka check-in already claim ho chuka hai.");
+      else {
+        setMessage(`+${res.coinsAwarded} coins! Day ${res.streak} streak.`);
+        setStatus((s) => ({ ...s, streak: res.streak, lastCheckin: new Date().toISOString().slice(0, 10) }));
       }
-    } catch (e) {
-      setError(e.message);
     } finally {
       setBusy(false);
     }
   }
 
-  async function handlePlay(gameFn, cost) {
-    if ((profile?.coins ?? 0) < cost) {
-      setError(`Need at least ${cost} coins`);
-      return;
-    }
+  async function handleLuckyBox() {
     setBusy(true);
-    setError(null);
-    setMessage(null);
+    setMessage("");
     try {
-      const prize = await gameFn(user.uid);
-      setMessage(`You won: ${prize.label} 🎉`);
-    } catch (e) {
-      setError(e.message);
+      const prize = await openLuckyBox(user.uid);
+      setLastPrize({ box: "Lucky Box", ...prize });
+    } catch (err) {
+      setMessage(err.message || "Failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSpin() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const prize = await spinWheel(user.uid);
+      setLastPrize({ box: "Spin Wheel", ...prize });
+    } catch (err) {
+      setMessage(err.message || "Failed.");
     } finally {
       setBusy(false);
     }
   }
 
   if (loading || !user) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-void">
-        <p className="text-mist text-sm">Loading…</p>
-      </main>
-    );
+    return <div className="flex min-h-screen items-center justify-center bg-void text-mist text-sm">Loading…</div>;
   }
 
-  return (
-    <main className="min-h-screen bg-void pb-28">
-      <header className="flex items-center justify-between px-5 pt-6">
-        <h1 className="font-display text-xl font-extrabold text-ink">Rewards</h1>
-        <span className="rounded-full bg-panel px-3 py-1.5 text-xs text-diamond ring-1 ring-white/5">
-          ● {profile?.coins ?? 0}
-        </span>
-      </header>
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const claimedToday = status.lastCheckin === todayKey;
 
-      <div className="mx-5 mt-4 flex gap-2">
-        <TabButton active={tab === "checkin"} onClick={() => setTab("checkin")}>Check-in</TabButton>
-        <TabButton active={tab === "box"} onClick={() => setTab("box")}>Lucky Box</TabButton>
-        <TabButton active={tab === "spin"} onClick={() => setTab("spin")}>Spin Wheel</TabButton>
+  return (
+    <div className="min-h-screen bg-void pb-10">
+      <div className="flex items-center gap-3 px-4 py-4">
+        <button onClick={() => router.back()} aria-label="Back" className="flex h-8 w-8 items-center justify-center rounded-full bg-panel text-ink ring-1 ring-white/10">←</button>
+        <h1 className="font-display text-base font-bold text-ink">Rewards</h1>
       </div>
 
-      {(message || error) && (
-        <div
-          className={`mx-5 mt-4 rounded-xl p-3 text-center text-sm font-semibold ${
-            error ? "bg-neon-pink/10 text-neon-pink" : "bg-emerald-500/10 text-emerald-400"
-          }`}
-        >
-          {error || message}
+      {message && <p className="mx-4 mb-2 text-[11px] text-neon-pink">{message}</p>}
+      {lastPrize && (
+        <p className="mx-4 mb-2 rounded-lg bg-gold/10 p-2 text-center text-xs font-semibold text-gold">
+          {lastPrize.box}: {lastPrize.label} 🎉
+        </p>
+      )}
+
+      {/* Daily check-in */}
+      <div className="mx-4 rounded-2xl bg-panel p-4 ring-1 ring-white/10">
+        <h2 className="text-sm font-bold text-ink">Daily Check-in</h2>
+        <div className="mt-3 grid grid-cols-7 gap-1.5">
+          {CHECKIN_REWARDS.map((coins, i) => {
+            const day = i + 1;
+            const active = ((status.streak - 1) % 7) + 1 === day && claimedToday;
+            return (
+              <div key={day} className={`flex flex-col items-center gap-1 rounded-lg py-2 text-center ${active ? "bg-glow-gradient" : "bg-panel2"}`}>
+                <span className="text-[9px] text-mist">D{day}</span>
+                <span className="text-[10px] font-bold text-ink">{coins}</span>
+              </div>
+            );
+          })}
         </div>
-      )}
+        <button
+          onClick={handleCheckin}
+          disabled={busy || claimedToday}
+          className="mt-3 w-full rounded-xl bg-glow-gradient py-2.5 text-sm font-bold text-ink disabled:opacity-50"
+        >
+          {claimedToday ? "Claimed Today ✓" : "Claim Today's Reward"}
+        </button>
+      </div>
 
-      {tab === "checkin" && (
-        <section className="mx-5 mt-4">
-          <p className="text-xs text-mist">
-            Check in every day for a bigger reward. Miss a day and the streak resets.
-          </p>
-          <div className="mt-4 grid grid-cols-7 gap-2">
-            {CHECKIN_REWARDS.map((coins, i) => {
-              const dayNum = i + 1;
-              const currentDay = ((status.streak - 1) % 7) + 1;
-              const isDone = claimedToday && dayNum <= currentDay;
-              return (
-                <div
-                  key={i}
-                  className={`rounded-xl p-2 text-center ring-1 ${
-                    isDone ? "bg-gold/20 ring-gold/40" : "bg-panel ring-white/5"
-                  }`}
-                >
-                  <p className="text-[10px] text-mist">Day {dayNum}</p>
-                  <p className="mt-1 text-xs font-bold text-ink">●{coins}</p>
-                </div>
-              );
-            })}
-          </div>
-          <button
-            onClick={handleCheckin}
-            disabled={busy || claimedToday}
-            className="mt-5 w-full rounded-full bg-glow-gradient py-3 text-sm font-bold text-ink disabled:opacity-50"
-          >
-            {claimedToday ? "Claimed for today" : "Claim Today's Reward"}
+      {/* Lucky box + spin wheel */}
+      <div className="mx-4 mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-panel p-4 text-center ring-1 ring-white/10">
+          <p className="text-2xl">🎁</p>
+          <p className="mt-1 text-xs font-semibold text-ink">Lucky Box</p>
+          <p className="text-[10px] text-mist">{LUCKY_BOX_COST} coins</p>
+          <button onClick={handleLuckyBox} disabled={busy || (profile?.coins || 0) < LUCKY_BOX_COST} className="mt-2 w-full rounded-full bg-glow-gradient py-2 text-xs font-bold text-ink disabled:opacity-40">
+            Open
           </button>
-          <p className="mt-2 text-center text-xs text-mist">Current streak: {status.streak || 0} day(s)</p>
-        </section>
-      )}
-
-      {tab === "box" && (
-        <section className="mx-5 mt-4 text-center">
-          <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-3xl bg-glow-gradient text-6xl shadow-glow">
-            🎁
-          </div>
-          <p className="mt-4 text-xs text-mist">
-            Open a box for a random prize — coins, diamonds, or the jackpot.
-          </p>
-          <button
-            onClick={() => handlePlay(openLuckyBox, LUCKY_BOX_COST)}
-            disabled={busy}
-            className="mt-5 w-full rounded-full bg-glow-gradient py-3 text-sm font-bold text-ink disabled:opacity-50"
-          >
-            Open Box — ● {LUCKY_BOX_COST} coins
+        </div>
+        <div className="rounded-2xl bg-panel p-4 text-center ring-1 ring-white/10">
+          <p className="text-2xl">🎡</p>
+          <p className="mt-1 text-xs font-semibold text-ink">Spin Wheel</p>
+          <p className="text-[10px] text-mist">{SPIN_WHEEL_COST} coins</p>
+          <button onClick={handleSpin} disabled={busy || (profile?.coins || 0) < SPIN_WHEEL_COST} className="mt-2 w-full rounded-full bg-glow-gradient py-2 text-xs font-bold text-ink disabled:opacity-40">
+            Spin
           </button>
-        </section>
-      )}
-
-      {tab === "spin" && (
-        <section className="mx-5 mt-4 text-center">
-          <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-full bg-glow-gradient text-6xl shadow-glow">
-            🎡
-          </div>
-          <p className="mt-4 text-xs text-mist">
-            Spin the wheel for a random prize — cheaper than the Lucky Box, smaller odds of a jackpot.
-          </p>
-          <button
-            onClick={() => handlePlay(spinWheel, SPIN_WHEEL_COST)}
-            disabled={busy}
-            className="mt-5 w-full rounded-full bg-glow-gradient py-3 text-sm font-bold text-ink disabled:opacity-50"
-          >
-            Spin — ● {SPIN_WHEEL_COST} coins
-          </button>
-        </section>
-      )}
-
-      <BottomNav />
-    </main>
-  );
-}
-
-function TabButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 rounded-full py-2 text-xs font-semibold ${
-        active ? "bg-glow-gradient text-ink" : "bg-panel text-mist ring-1 ring-white/10"
-      }`}
-    >
-      {children}
-    </button>
+        </div>
+      </div>
+    </div>
   );
 }

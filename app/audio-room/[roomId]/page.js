@@ -5,41 +5,53 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import {
   listenRoom,
-  endRoom,
   takeSeat,
+  takeSeatPriority,
   leaveSeat,
+  kickFromSeat,
   toggleSeatMute,
-  announceEntrance,
   lockSeat,
   unlockSeat,
   lockAllSeats,
   unlockAllSeats,
-  kickFromSeat,
+  announceEntrance,
+  endRoom,
+  deleteRoomIfEmpty,
 } from "@/lib/rooms";
-import { findBackground } from "@/lib/backgrounds";
-import { findItem } from "@/lib/decorations";
+import {
+  sendSeatRequest,
+  listenIncomingSeatRequests,
+  respondSeatRequest,
+} from "@/lib/roomRequests";
 import {
   createAgoraClient,
+  createMicTrack,
   createCustomAudioTrack,
   fetchAgoraToken,
   getRawMicStream,
-  AGORA_APP_ID,
   watchSpeakingUsers,
-  watchNetworkQuality,
   watchConnectionState,
+  AGORA_APP_ID,
 } from "@/lib/agora";
 import { createVoiceChanger } from "@/lib/voiceChanger";
+import { findBackground } from "@/lib/backgrounds";
+import { joinRoomPresence } from "@/lib/coHost";
+
 import SeatGrid from "@/components/SeatGrid";
 import SeatActionSheet from "@/components/SeatActionSheet";
-import VoiceChangerPicker from "@/components/VoiceChangerPicker";
-import LiveChat from "@/components/LiveChat";
+import RoomRequests from "@/components/RoomRequests";
 import GiftBar from "@/components/GiftBar";
 import GiftFeed from "@/components/GiftFeed";
-import GiftRideBanner from "@/components/GiftRideBanner";
+import LiveChat from "@/components/LiveChat";
 import EntranceBanner from "@/components/EntranceBanner";
+import FloatingHearts from "@/components/FloatingHearts";
+import VoiceChangerPicker from "@/components/VoiceChangerPicker";
 import BackgroundPicker from "@/components/BackgroundPicker";
-
-const SIGNAL_LABEL = { 0: "", 1: "●", 2: "●", 3: "●", 4: "●", 5: "●", 6: "●" };
+import RoomMoreMenu from "@/components/RoomMoreMenu";
+import GiftLevelBadge from "@/components/GiftLevelBadge";
+import LudoGame from "@/components/LudoGame";
+import PkBattlePanel from "@/components/PkBattlePanel";
+import { listenActiveBattleForRoom, addBattleScore } from "@/lib/pkbattle";
 
 export default function AudioRoomPage() {
   const { roomId } = useParams();
@@ -47,324 +59,345 @@ export default function AudioRoomPage() {
   const { user, profile, loading } = useAuth();
 
   const [room, setRoom] = useState(null);
-  const [error, setError] = useState("");
-  const [micOn, setMicOn] = useState(true);
+  const [roomError, setRoomError] = useState("");
+  const [sheetSeat, setSheetSeat] = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [showGifts, setShowGifts] = useState(false);
+  const [showLudo, setShowLudo] = useState(false);
+  const [activeBattle, setActiveBattle] = useState(null);
   const [speakingUids, setSpeakingUids] = useState(new Set());
-  const [networkQuality, setNetworkQuality] = useState(0);
-  const [connectionState, setConnectionState] = useState("DISCONNECTED");
-  const [actionSeat, setActionSeat] = useState(null);
-  const [voicePreset, setVoicePresetState] = useState("original");
+  const [voicePreset, setVoicePreset] = useState("original");
+  const [hearts, setHearts] = useState([]);
+  const [connError, setConnError] = useState("");
+  const [busySeat, setBusySeat] = useState(false);
 
   const clientRef = useRef(null);
-  const micTrackRef = useRef(null);
   const rawStreamRef = useRef(null);
-  const voiceChangerRef = useRef(null);
-  const remoteAudioRef = useRef({}); // uid -> audioTrack, so we can clean up on leave
+  const changerRef = useRef(null);
+  const publishedTrackRef = useRef(null);
+  const announcedRef = useRef(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
+  // Room doc subscription
   useEffect(() => {
-    const unsub = listenRoom(roomId, setRoom);
+    if (!roomId) return;
+    const unsub = listenRoom(roomId, (r) => {
+      setRoom(r);
+      if (!r) setRoomError("Ye room ab available nahi hai.");
+    });
     return () => unsub();
   }, [roomId]);
 
-  const isHost = room && user && room.hostUid === user.uid;
-  const mySeat = room?.seats?.find((s) => s.uid === user?.uid);
-
-  // Announce this user's ride once per visit ("Ride in style when you enter a room")
-  const announcedRef = useRef(false);
+  // Incoming seat requests (host only sees requests addressed to them,
+  // but any seated user can be invited to — this listens for requests
+  // sent to *me*, e.g. a host inviting me onto a seat).
   useEffect(() => {
-    if (!room || !user || announcedRef.current) return;
+    if (!roomId || !user) return;
+    const unsub = listenIncomingSeatRequests(roomId, user.uid, setRequests);
+    return () => unsub();
+  }, [roomId, user]);
+
+  // PK battle sync
+  useEffect(() => {
+    if (!roomId) return;
+    const unsub = listenActiveBattleForRoom(roomId, setActiveBattle);
+    return () => unsub();
+  }, [roomId]);
+
+  // Presence (so "Invite" pickers know who's in the room)
+  useEffect(() => {
+    if (!roomId || !user) return;
+    const stop = joinRoomPresence(roomId, user.uid, profile?.displayName || "User");
+    return stop;
+  }, [roomId, user, profile?.displayName]);
+
+  // Announce entrance once, after room + profile are loaded
+  useEffect(() => {
+    if (!roomId || !user || !room || announcedRef.current) return;
     announcedRef.current = true;
-    const vehicleId = profile?.equippedVehicle;
-    const vehicle = vehicleId ? findItem("vehicle", vehicleId) : null;
     announceEntrance(roomId, {
       uid: user.uid,
       name: profile?.displayName || "User",
-      vehicleId: vehicle?.id,
-      vehicleName: vehicle?.name,
-      vehicleImage: vehicle?.image,
-    });
-  }, [room?.id, user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+      vehicleId: profile?.equippedVehicle,
+      vehicleName: profile?.equippedVehicleName,
+      vehicleImage: profile?.equippedVehicleImage,
+    }).catch(() => {});
+  }, [roomId, user, room, profile]);
 
-  // Join the Agora audio channel as soon as we land in the room (everyone can listen)
+  const mySeat = room?.seats?.find((s) => s.uid === user?.uid) || null;
+  const isHost = room?.hostUid === user?.uid;
+
+  // Join Agora + publish mic whenever I have a seat; leave/unpublish otherwise
   useEffect(() => {
-    if (!room || !user || !AGORA_APP_ID) return;
     let cancelled = false;
-    let unwatchSpeaking = () => {};
-    let unwatchNetwork = () => {};
-    let unwatchConnection = () => {};
 
-    async function join() {
+    async function joinAudio() {
+      if (!mySeat || !AGORA_APP_ID) return;
       try {
         const client = await createAgoraClient("rtc");
         clientRef.current = client;
-
-        client.on("user-published", async (remoteUser, mediaType) => {
-          if (mediaType !== "audio") return;
-          await client.subscribe(remoteUser, mediaType);
-          remoteUser.audioTrack.play();
-          remoteAudioRef.current[remoteUser.uid] = remoteUser.audioTrack;
+        watchConnectionState(client, (state, reason) => {
+          if (state === "DISCONNECTED") setConnError(`Connection lost${reason ? `: ${reason}` : ""}`);
+          else setConnError("");
         });
-
-        client.on("user-unpublished", (remoteUser) => {
-          delete remoteAudioRef.current[remoteUser.uid];
-        });
-
-        const token = await fetchAgoraToken(String(roomId), user.uid);
-        if (cancelled) return;
-        await client.join(AGORA_APP_ID, String(roomId), token, user.uid);
+        const token = await fetchAgoraToken(roomId, user.uid).catch(() => null);
+        await client.join(AGORA_APP_ID, roomId, token, user.uid);
         if (cancelled) return;
 
-        // Modern call-quality niceties: who's talking right now, how good is
-        // the connection, and a heads-up if we drop and try to reconnect.
-        unwatchSpeaking = watchSpeakingUsers(client, setSpeakingUids);
-        unwatchNetwork = watchNetworkQuality(client, setNetworkQuality);
-        unwatchConnection = watchConnectionState(client, (state) => setConnectionState(state));
+        watchSpeakingUsers(client, setSpeakingUids);
+
+        const rawStream = await getRawMicStream();
+        rawStreamRef.current = rawStream;
+        const changer = await createVoiceChanger(rawStream);
+        changerRef.current = changer;
+        changer.setPreset(voicePreset);
+
+        const track = await createCustomAudioTrack(changer.outputTrack);
+        publishedTrackRef.current = track;
+        await client.publish([track]);
       } catch (err) {
-        console.error(err);
-        const detail = err?.message || err?.code || "unknown error";
-        setError(`Could not connect to audio (${detail}).`);
+        console.error("[audio-room] join failed:", err);
+        if (!cancelled) setConnError(err?.message || "Could not connect to voice.");
       }
     }
 
-    join();
+    joinAudio();
 
     return () => {
       cancelled = true;
-      unwatchSpeaking();
-      unwatchNetwork();
-      unwatchConnection();
-      voiceChangerRef.current?.dispose();
-      voiceChangerRef.current = null;
+      publishedTrackRef.current?.close();
+      publishedTrackRef.current = null;
+      changerRef.current?.dispose();
+      changerRef.current = null;
       rawStreamRef.current?.getTracks().forEach((t) => t.stop());
       rawStreamRef.current = null;
-      micTrackRef.current?.close();
-      micTrackRef.current = null;
-      clientRef.current?.leave();
+      clientRef.current?.leave().catch(() => {});
+      clientRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room?.id]);
+  }, [mySeat?.seatIndex, roomId, user?.uid]);
 
-  // Publish mic only while sitting in a seat — routed through the voice
-  // changer's Web Audio graph so presets apply before Agora ever sees it.
   useEffect(() => {
-    const client = clientRef.current;
-    if (!client) return;
+    changerRef.current?.setPreset(voicePreset);
+  }, [voicePreset]);
 
-    async function publishMic() {
-      if (mySeat && !micTrackRef.current) {
-        try {
-          const rawStream = await getRawMicStream();
-          rawStreamRef.current = rawStream;
-          const vc = await createVoiceChanger(rawStream);
-          vc.setPreset(voicePreset);
-          voiceChangerRef.current = vc;
-          const track = await createCustomAudioTrack(vc.outputTrack);
-          micTrackRef.current = track;
-          await client.publish([track]);
-        } catch (err) {
-          console.error("voice changer publish failed, falling back to plain mic", err);
-          setError("Voice effects unavailable on this device — using standard mic.");
-          const { createMicTrack } = await import("@/lib/agora");
-          const track = await createMicTrack();
-          micTrackRef.current = track;
-          await client.publish([track]);
-        }
-      }
-      if (!mySeat && micTrackRef.current) {
-        await client.unpublish([micTrackRef.current]);
-        micTrackRef.current.close();
-        micTrackRef.current = null;
-        voiceChangerRef.current?.dispose();
-        voiceChangerRef.current = null;
-        rawStreamRef.current?.getTracks().forEach((t) => t.stop());
-        rawStreamRef.current = null;
-      }
-    }
-    publishMic();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mySeat]);
-
-  function setVoicePreset(id) {
-    setVoicePresetState(id);
-    voiceChangerRef.current?.setPreset(id);
-  }
+  // Reflect host-side mute toggles into the actual published track
+  useEffect(() => {
+    if (!publishedTrackRef.current) return;
+    if (mySeat?.muted) publishedTrackRef.current.setMuted?.(true);
+    else publishedTrackRef.current.setMuted?.(false);
+  }, [mySeat?.muted]);
 
   async function handleSeatTap(seat) {
-    if (seat.uid && seat.uid !== user.uid) return; // occupied by someone else
+    if (!user) return;
+    setRoomError("");
     if (seat.uid === user.uid) {
       await leaveSeat(roomId, seat.seatIndex);
       return;
     }
-    if (seat.locked && !isHost) {
-      setError("This seat is locked by the host.");
+    if (seat.uid) return; // occupied by someone else — nothing to do on tap
+    if (seat.locked) {
+      setRoomError("Ye seat locked hai.");
       return;
     }
+    setBusySeat(true);
     try {
-      await takeSeat(
-        roomId,
-        seat.seatIndex,
-        user.uid,
-        profile?.displayName || "User",
-        profile?.vipLevel || 0,
-        profile?.equippedFrame || null
-      );
-    } catch (e) {
-      // Seat got taken/locked a moment ago — ignore
+      await takeSeat(roomId, seat.seatIndex, user.uid, profile?.displayName || "User", profile?.vipLevel || 0, profile?.equippedFrame || null);
+    } catch (err) {
+      // Room full — VIP2+ can try to bump a lower-VIP priority seat
+      if ((profile?.vipLevel || 0) >= 2) {
+        try {
+          await takeSeatPriority(roomId, user.uid, profile?.displayName || "User", profile?.vipLevel || 0, profile?.equippedFrame || null);
+        } catch (err2) {
+          setRoomError(err2.message || "Seat le nahi saka.");
+        }
+      } else {
+        setRoomError(err.message || "Seat le nahi saka.");
+      }
+    } finally {
+      setBusySeat(false);
     }
   }
 
   function handleSeatLongPress(seat) {
     if (!isHost) return;
-    setActionSeat(seat);
+    setSheetSeat(seat);
   }
 
-  function toggleMic() {
-    if (!micTrackRef.current) return;
-    micTrackRef.current.setEnabled(!micOn);
-    toggleSeatMute(roomId, mySeat.seatIndex, micOn);
-    setMicOn(!micOn);
+  function spawnHeart() {
+    const id = Date.now() + Math.random();
+    setHearts((h) => [...h, { id, x: 70 + Math.random() * 20, emoji: "❤️" }]);
+    setTimeout(() => setHearts((h) => h.filter((x) => x.id !== id)), 2200);
   }
 
-  // Back arrow only ever leaves the screen — it never closes the room, even
-  // for the host. That way an accidental tap on "←" can't kill a live room;
-  // it just steps you out while the broadcast keeps running for everyone
-  // else. (Your mic auto-unpublishes because the Agora effect above cleans
-  // up on unmount, same as before.)
-  async function handleBack() {
-    if (mySeat) await leaveSeat(roomId, mySeat.seatIndex);
-    router.push("/rooms");
+  async function handleInvite(seat) {
+    if (!user) return;
+    // Simple invite target picker: prompt for who to invite isn't wired to
+    // a friend list here, so this sends the request to whichever seated
+    // user's name we ask for isn't practical inline — instead this button
+    // is used by hosts to (re)request a *viewer* takes an empty seat via
+    // sendSeatRequest once a name/uid is known from AddGuestButton's
+    // participant list. Kept simple: host taps a seat, we no-op unless a
+    // participant has been selected elsewhere.
+    return;
   }
 
-  // The dedicated "End"/power-off control — the ONLY thing that can close
-  // a room for everyone. Host gets a confirmation first, since this can't
-  // be undone (matches the deliberate off-switch behaviour in the screenshot,
-  // instead of the old one-tap-and-it's-gone version).
-  async function handleLeaveOrEnd() {
-    if (!isHost) {
-      if (mySeat) await leaveSeat(roomId, mySeat.seatIndex);
-      router.push("/rooms");
-      return;
+  async function handleLeaveRoom() {
+    if (mySeat) await leaveSeat(roomId, mySeat.seatIndex).catch(() => {});
+    if (isHost) {
+      const stillOccupied = room?.seats?.some((s) => s.uid && s.uid !== user.uid);
+      if (!stillOccupied) {
+        await endRoom(roomId).catch(() => {});
+      }
     }
-    const sure = window.confirm("End this room for everyone? This can't be undone.");
-    if (!sure) return;
-    if (mySeat) await leaveSeat(roomId, mySeat.seatIndex);
-    await endRoom(roomId);
     router.push("/rooms");
   }
 
-  if (loading || !user || !room) {
+  if (loading || !room) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-void">
-        <p className="text-mist text-sm">Loading…</p>
-      </main>
+      <div className="flex min-h-screen items-center justify-center bg-void text-mist">
+        {roomError ? (
+          <div className="text-center">
+            <p className="mb-3 text-sm text-ink">{roomError}</p>
+            <button onClick={() => router.push("/rooms")} className="rounded-full bg-panel px-4 py-2 text-xs text-ink ring-1 ring-white/10">
+              ← Back to Rooms
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm">Loading room…</p>
+        )}
+      </div>
     );
   }
 
   const bg = findBackground(room.background);
-  const isReconnecting = connectionState === "RECONNECTING";
+  const targets = (room.seats || [])
+    .filter((s) => s.uid && s.uid !== user?.uid)
+    .map((s) => ({ uid: s.uid, name: s.name }));
 
   return (
-    <main className="flex min-h-screen flex-col bg-void" style={{ background: bg.css }}>
-      <header className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
-          <button onClick={handleBack} aria-label="Back" className="text-lg text-ink/80">
+    <div className="relative flex min-h-screen flex-col bg-void" style={{ background: bg.css }}>
+      {/* Header */}
+      <div className="relative z-20 flex items-center justify-between px-3 py-3">
+        <div className="flex items-center gap-2">
+          <button onClick={handleLeaveRoom} aria-label="Back" className="flex h-8 w-8 items-center justify-center rounded-full bg-panel/80 text-ink ring-1 ring-white/10">
             ←
           </button>
           <div>
-            <p className="font-display text-sm font-bold text-ink">{room.title}</p>
-            <p className="text-xs text-mist">Hosted by {room.hostName}</p>
+            <p className="max-w-[140px] truncate text-sm font-bold text-ink">{room.title}</p>
+            <p className="text-[10px] text-mist">{room.hostName}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {networkQuality > 0 && (
-            <span
-              title="Call quality"
-              className={`text-[10px] ${networkQuality <= 2 ? "text-green-400" : networkQuality <= 4 ? "text-gold" : "text-neon-pink"}`}
-            >
-              {SIGNAL_LABEL[networkQuality]}
-            </span>
-          )}
-          {isHost && <BackgroundPicker roomId={String(roomId)} current={room.background} />}
-          <button
-            onClick={handleLeaveOrEnd}
-            aria-label={isHost ? "End room" : "Leave room"}
-            className="rounded-full bg-panel px-3 py-1.5 text-xs font-semibold text-neon-pink ring-1 ring-neon-pink/30"
-          >
-            {isHost ? "⏻ End" : "Leave"}
+          {isHost && <BackgroundPicker roomId={roomId} current={room.background} />}
+          <button onClick={() => setShowLudo(true)} aria-label="Ludo" className="rounded-full bg-panel/80 px-2.5 py-1.5 text-sm ring-1 ring-white/10">
+            🎲
           </button>
+          <RoomMoreMenu />
         </div>
-      </header>
+      </div>
 
-      {!AGORA_APP_ID && (
-        <p className="mx-4 rounded-lg bg-panel p-3 text-xs text-gold">
-          ⚠️ NEXT_PUBLIC_AGORA_APP_ID is not set in .env.local — audio won't connect until it is.
+      {connError && (
+        <p className="relative z-20 mx-3 mb-2 rounded-lg bg-neon-pink/10 px-3 py-2 text-[11px] text-neon-pink">
+          {connError}
         </p>
       )}
-      {isReconnecting && (
-        <p className="mx-4 rounded-lg bg-panel p-3 text-xs text-gold">🔄 Reconnecting audio…</p>
+      {roomError && (
+        <p className="relative z-20 mx-3 mb-2 rounded-lg bg-neon-pink/10 px-3 py-2 text-[11px] text-neon-pink">
+          {roomError}
+        </p>
       )}
-      {error && <p className="mx-4 rounded-lg bg-panel p-3 text-xs text-neon-pink">{error}</p>}
 
-      <div className="relative mt-4">
-        <GiftFeed roomId={String(roomId)} />
-        <GiftRideBanner roomId={String(roomId)} />
-        <EntranceBanner roomId={String(roomId)} />
+      <EntranceBanner roomId={roomId} />
+      <GiftFeed roomId={roomId} />
+      <FloatingHearts hearts={hearts} />
+      <RoomRequests
+        requests={requests}
+        onAccept={(r) => respondSeatRequest(roomId, r.id, "accepted").then(() => handleSeatTap({ seatIndex: r.seatIndex, uid: null, locked: false }))}
+        onReject={(r) => respondSeatRequest(roomId, r.id, "rejected")}
+      />
+
+      {/* Seats */}
+      <div className="relative z-10 mt-2 flex-1">
         <SeatGrid
           seats={room.seats || []}
-          myUid={user.uid}
+          myUid={user?.uid}
           isHost={isHost}
           speakingUids={speakingUids}
           onSeatTap={handleSeatTap}
           onSeatLongPress={handleSeatLongPress}
         />
-        {isHost && (
-          <p className="mt-2 text-center text-[10px] text-mist/70">Hold a seat to lock, mute, or manage it</p>
-        )}
+        {busySeat && <p className="mt-2 text-center text-[10px] text-mist">Seat le rahe hain…</p>}
       </div>
 
-      <GiftBar
-        roomId={String(roomId)}
-        fromUid={user.uid}
-        fromName={profile?.displayName || "User"}
-        targets={(room.seats || [])
-          .filter((s) => s.uid && s.uid !== user.uid)
-          .map((s) => ({ uid: s.uid, name: s.name }))}
-        myCoins={profile?.coins ?? 0}
-      />
+      <PkBattlePanel room={room} roomId={roomId} isHost={isHost} activeBattle={activeBattle} />
 
-      {mySeat && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <button
-            onClick={toggleMic}
-            className={`rounded-full px-4 py-2 text-xs font-semibold ${
-              micOn ? "bg-panel text-ink ring-1 ring-white/10" : "bg-neon-pink/20 text-neon-pink"
-            }`}
-          >
-            {micOn ? "🎤 Mic On" : "🔇 Mic Off"}
-          </button>
-          <VoiceChangerPicker current={voicePreset} onSelect={setVoicePreset} />
+      {/* Chat */}
+      <div className="relative z-10 h-56 border-t border-white/5 bg-void/60 backdrop-blur">
+        <LiveChat
+          roomId={roomId}
+          uid={user?.uid}
+          name={profile?.displayName || "User"}
+          vipLevel={profile?.vipLevel || 0}
+          onOpenGifts={() => setShowGifts((s) => !s)}
+          onSendHeart={spawnHeart}
+        />
+      </div>
+
+      {/* Bottom toolbar */}
+      <div className="relative z-20 flex items-center gap-2 border-t border-white/5 bg-panel/90 px-3 py-2">
+        {mySeat && (
+          <VoiceChangerPicker
+            current={voicePreset}
+            onSelect={setVoicePreset}
+            uid={user?.uid}
+            unlocked={profile?.voiceChangerUnlocked || ["original"]}
+          />
+        )}
+        <GiftLevelBadge totalGiftedCoins={profile?.totalGiftedCoins || 0} compact />
+        <div className="ml-auto text-[11px] text-mist">
+          ● {profile?.coins ?? 0} coins
+        </div>
+      </div>
+
+      {showGifts && (
+        <div className="relative z-20 bg-panel/95">
+          <GiftBar
+            roomId={roomId}
+            fromUid={user?.uid}
+            fromName={profile?.displayName || "User"}
+            targets={targets}
+            myCoins={profile?.coins || 0}
+            onClose={() => setShowGifts(false)}
+          />
         </div>
       )}
 
-      <div className="mt-4 flex-1 overflow-hidden border-t border-white/5">
-        <LiveChat roomId={String(roomId)} uid={user.uid} name={profile?.displayName || "User"} />
-      </div>
+      {isHost && sheetSeat && (
+        <SeatActionSheet
+          seat={sheetSeat}
+          onClose={() => setSheetSeat(null)}
+          onLock={(s) => lockSeat(roomId, s.seatIndex)}
+          onUnlock={(s) => unlockSeat(roomId, s.seatIndex)}
+          onLockAll={() => lockAllSeats(roomId)}
+          onUnlockAll={() => unlockAllSeats(roomId)}
+          onMute={(s) => toggleSeatMute(roomId, s.seatIndex, true)}
+          onUnmute={(s) => toggleSeatMute(roomId, s.seatIndex, false)}
+          onKick={(s) => kickFromSeat(roomId, s.seatIndex)}
+        />
+      )}
 
-      <SeatActionSheet
-        seat={actionSeat}
-        onClose={() => setActionSeat(null)}
-        onLock={(s) => lockSeat(roomId, s.seatIndex)}
-        onUnlock={(s) => unlockSeat(roomId, s.seatIndex)}
-        onLockAll={() => lockAllSeats(roomId)}
-        onUnlockAll={() => unlockAllSeats(roomId)}
-        onMute={(s) => toggleSeatMute(roomId, s.seatIndex, true)}
-        onUnmute={(s) => toggleSeatMute(roomId, s.seatIndex, false)}
-        onKick={(s) => kickFromSeat(roomId, s.seatIndex)}
-      />
-    </main>
+      {showLudo && user && (
+        <LudoGame
+          uid={user.uid}
+          name={profile?.displayName || "User"}
+          avatar={profile?.avatar || ""}
+          onClose={() => setShowLudo(false)}
+        />
+      )}
+    </div>
   );
 }
