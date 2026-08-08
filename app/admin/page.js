@@ -167,8 +167,10 @@ export default function AdminPage() {
                       <p className="text-xs text-mist">
                         ● {r.coins} coins · Rs {r.priceRs} · {r.method}
                       </p>
-                      {r.reference && (
-                        <p className="text-xs text-mist">Ref: {r.reference}</p>
+                      {r.reference ? (
+                        <p className="text-xs font-semibold text-gold">Txn ID: {r.reference}</p>
+                      ) : (
+                        <p className="text-xs font-semibold text-neon-pink">⚠ No transaction ID provided</p>
                       )}
                     </div>
                     <div className="flex gap-2">

@@ -4,38 +4,33 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
+import { listenActiveRooms } from "@/lib/rooms";
 import BottomNav from "@/components/BottomNav";
 import SearchLink from "@/components/SearchLink";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
 
-// Placeholder rooms — Phase 2 me ye Firestore/Agora se live data se replace hoga
-const DEMO_ROOMS = [
-  { id: "r1", title: "Late Night Chill", host: "Ayesha", viewers: 812, tag: "Live", level: 34 },
-  { id: "r2", title: "Sindhi Room", host: "Adil Sultan", viewers: 1240, tag: "SVIP", level: 53 },
-  { id: "r3", title: "Music Lounge", host: "DJ Noor", viewers: 356, tag: "Audio", level: 21 },
-  { id: "r4", title: "Game Night", host: "Team Falcon", viewers: 209, tag: "Live", level: 12 },
-];
-
 const BANNERS = [
-  { id: "b1", title: "PK Battle Arena", subtitle: "Team up & win the daily jackpot", cta: "Go" },
-  { id: "b2", title: "Level Up Racing", subtitle: "Send gifts to climb the rocket ranks", cta: "Go" },
-  { id: "b3", title: "Weekend Lucky Bag", subtitle: "Open a bag, win coins instantly", cta: "Go" },
+  { id: "b1", title: "PK Battle Arena", subtitle: "Team up & win the daily jackpot", cta: "Go", href: "/rooms" },
+  { id: "b2", title: "Level Up Racing", subtitle: "Send gifts to climb the rocket ranks", cta: "Go", href: "/rooms" },
+  { id: "b3", title: "Weekend Lucky Bag", subtitle: "Open a bag, win coins instantly", cta: "Go", href: "/lucky-bag" },
 ];
 
 const QUICK_LINKS = [
   { href: "/leaderboard", label: "Ranking", emoji: "🏆", grad: "from-emerald-400/90 to-teal-500/90" },
   { href: "/family", label: "Family", emoji: "🏠", grad: "from-amber-400/90 to-orange-500/90" },
   { href: "/profile/friends", label: "CP / Friend", emoji: "💞", grad: "from-pink-400/90 to-fuchsia-500/90" },
+  { href: "/games/ludo", label: "Ludo", emoji: "🎲", grad: "from-indigo-400/90 to-violet-500/90" },
 ];
 
-const CATEGORIES = ["Popular", "Live", "Audio Room"];
+const CATEGORIES = ["Popular", "Voice Rooms"];
 
 export default function HomePage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [bannerIdx, setBannerIdx] = useState(0);
   const [category, setCategory] = useState("Popular");
+  const [liveRooms, setLiveRooms] = useState([]);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -44,6 +39,14 @@ export default function HomePage() {
   useEffect(() => {
     const t = setInterval(() => setBannerIdx((i) => (i + 1) % BANNERS.length), 4000);
     return () => clearInterval(t);
+  }, []);
+
+  // Real rooms only — no more placeholder/demo cards.
+  useEffect(() => {
+    const unsub = listenActiveRooms(setLiveRooms, (err) =>
+      console.error("[home] rooms load failed:", err)
+    );
+    return () => unsub();
   }, []);
 
   if (loading || !user) {
@@ -55,10 +58,7 @@ export default function HomePage() {
   }
 
   const banner = BANNERS[bannerIdx];
-  const rooms =
-    category === "Popular"
-      ? DEMO_ROOMS
-      : DEMO_ROOMS.filter((r) => r.tag.toLowerCase() === category.split(" ")[0].toLowerCase());
+  const rooms = category === "Popular" ? liveRooms : liveRooms.filter((r) => r.type === "audio");
 
   return (
     <main className="min-h-screen bg-void pb-28">
@@ -80,6 +80,13 @@ export default function HomePage() {
             </span>
           </div>
           <SearchLink />
+          <Link
+            href="/messages"
+            aria-label="Messages"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-panel text-base text-mist ring-1 ring-white/5"
+          >
+            💬
+          </Link>
           <NotificationBell />
           <ThemeToggle />
         </div>
@@ -91,7 +98,7 @@ export default function HomePage() {
           <p className="font-display text-lg font-extrabold text-ink">{banner.title}</p>
           <p className="mt-1 text-sm text-ink/80">{banner.subtitle}</p>
           <Link
-            href="/rooms"
+            href={banner.href}
             className="mt-4 inline-block rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-void"
           >
             {banner.cta}
@@ -113,7 +120,7 @@ export default function HomePage() {
       </section>
 
       {/* Quick access: Ranking / Family / CP-Friend */}
-      <section className="mx-5 mt-4 grid grid-cols-3 gap-3">
+      <section className="mx-5 mt-4 grid grid-cols-4 gap-3">
         {QUICK_LINKS.map((q) => (
           <Link
             key={q.href}
@@ -144,42 +151,38 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Room grid */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          {rooms.map((room) => (
-            <Link
-              key={room.id}
-              href="/rooms"
-              className="group overflow-hidden rounded-xl bg-panel shadow-sm ring-1 ring-white/5 active:opacity-90"
-            >
-              {/* thumbnail placeholder — swap for room.coverUrl once live */}
-              <div className="relative flex h-24 items-center justify-center bg-gradient-to-br from-neon-violet/30 to-neon-pink/30">
-                <span className="text-3xl">🎥</span>
-                <span className="absolute left-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-gold">
-                  Lv.{room.level}
-                </span>
-                <span
-                  className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    room.tag === "SVIP"
-                      ? "bg-gold/90 text-void"
-                      : "bg-neon-pink/80 text-white"
-                  }`}
-                >
-                  {room.tag}
-                </span>
-              </div>
-              <div className="p-3">
-                <p className="truncate font-display text-sm font-bold text-ink">
-                  {room.title}
-                </p>
-                <div className="mt-1 flex items-center justify-between">
-                  <p className="truncate text-xs text-mist">{room.host}</p>
-                  <span className="text-[10px] text-mist">{room.viewers} 👁</span>
+        {/* Room grid — real live/audio rooms from Firestore only */}
+        {rooms.length === 0 ? (
+          <p className="mt-6 text-center text-xs text-mist">
+            Abhi koi room live nahi hai. Sab se pehle aap shuru karein!
+          </p>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {rooms.map((room) => (
+              <Link
+                key={room.id}
+                href={`/audio-room/${room.id}`}
+                className="group overflow-hidden rounded-xl bg-panel shadow-sm ring-1 ring-white/5 active:opacity-90"
+              >
+                <div className="relative flex h-24 items-center justify-center bg-gradient-to-br from-neon-violet/30 to-neon-pink/30">
+                  <span className="text-3xl">🎙️</span>
+                  <span className="absolute right-2 top-2 rounded-full bg-neon-pink/80 px-2 py-0.5 text-[10px] font-semibold text-white">
+                    Voice
+                  </span>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+                <div className="p-3">
+                  <p className="truncate font-display text-sm font-bold text-ink">
+                    {room.title}
+                  </p>
+                  <div className="mt-1 flex items-center justify-between">
+                    <p className="truncate text-xs text-mist">{room.hostName}</p>
+                    <span className="text-[10px] text-mist">{room.viewerCount ?? 0} 👁</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <BottomNav />

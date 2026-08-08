@@ -163,6 +163,12 @@ export default function PublicProfilePage() {
         >
           💞 Request CP
         </button>
+        <Link
+          href={`/messages/${uid}`}
+          className="flex-1 rounded-full bg-glow-gradient px-3 py-2 text-center text-xs font-semibold text-ink"
+        >
+          💬 Message
+        </Link>
       </section>
       {(friendMsg || cpMsg) && (
         <p className="mx-5 mt-2 text-center text-xs text-diamond">{friendMsg || cpMsg}</p>

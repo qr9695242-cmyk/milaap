@@ -23,6 +23,10 @@ export default function RechargePage() {
 
   async function handleSubmit() {
     if (!selected) return;
+    if (!reference.trim()) {
+      alert("Payment ka Transaction ID / Reference number darj karna zaroori hai.");
+      return;
+    }
     setBusy(true);
     try {
       await submitRechargeRequest({
@@ -142,19 +146,23 @@ export default function RechargePage() {
 
           <div className="mt-4">
             <label className="text-xs text-mist">
-              Transaction ID / Reference (optional, faster approval)
+              Transaction ID / Reference <span className="text-neon-pink">(required)</span>
             </label>
             <input
               value={reference}
               onChange={(e) => setReference(e.target.value)}
               placeholder="e.g. TXN123456"
+              required
               className="mt-1 w-full rounded-lg bg-panel px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
             />
+            <p className="mt-1 text-[11px] text-mist">
+              JazzCash/Easypaisa se mila transaction ID/reference number yahan darj karein — is ke bagair request submit nahi hogi.
+            </p>
           </div>
 
           <button
             onClick={handleSubmit}
-            disabled={busy}
+            disabled={busy || !reference.trim()}
             className="mt-5 w-full rounded-full bg-glow-gradient py-3 text-sm font-semibold text-ink shadow-glow disabled:opacity-60"
           >
             {busy ? "Submitting…" : "I've Paid — Submit for Approval"}
