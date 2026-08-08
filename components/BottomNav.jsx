@@ -28,8 +28,10 @@ export default function BottomNav() {
                 }`}
               >
                 <span
-                  className={`text-2xl leading-none ${
-                    active ? "glow-text" : ""
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-xl leading-none transition-all ${
+                    active
+                      ? "bg-glow-gradient text-ink shadow-3d-btn scale-105"
+                      : ""
                   }`}
                 >
                   {tab.icon}

@@ -18,11 +18,11 @@ export default function SeatGrid({ seats, myUid, onSeatTap }) {
             className="flex flex-col items-center gap-1"
           >
             {occupied ? (
-              <div className="relative">
+              <div className="relative flex h-14 w-14 items-center justify-center">
                 <FramedAvatar
                   frameId={seat.frame}
                   name={seat.name}
-                  size={56}
+                  size={44}
                   ring={!seat.frame}
                 />
                 {isMe && !seat.frame && (

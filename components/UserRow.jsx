@@ -5,6 +5,7 @@ import OnlineDot from "./OnlineDot";
 import FollowButton from "./FollowButton";
 import HostLevelBadge from "./HostLevelBadge";
 import VipBadge from "./VipBadge";
+import GiftLevelBadge from "./GiftLevelBadge";
 
 /** u = a users/{uid} doc (needs at least uid/id, displayName, avatar, lastActiveAt) */
 export default function UserRow({ u, showFollow = true }) {
@@ -23,6 +24,7 @@ export default function UserRow({ u, showFollow = true }) {
             <p className="truncate text-sm font-semibold text-ink">{u.displayName || "User"}</p>
             <HostLevelBadge diamonds={u.diamonds} compact />
             <VipBadge vipLevel={u.vipLevel} compact />
+            {u.totalGiftedCoins > 0 && <GiftLevelBadge totalGiftedCoins={u.totalGiftedCoins} compact />}
           </div>
           {typeof u.followersCount === "number" && (
             <p className="text-xs text-mist">{u.followersCount} followers</p>

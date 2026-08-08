@@ -36,7 +36,7 @@ export default function BackgroundPicker({ roomId, current }) {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="font-display text-sm font-bold text-ink">Room Background</h2>
-            <div className="mt-4 grid grid-cols-4 gap-3">
+            <div className="mt-4 grid grid-cols-5 gap-3">
               {BACKGROUND_CATALOG.map((bg) => (
                 <button
                   key={bg.id}
@@ -45,12 +45,12 @@ export default function BackgroundPicker({ roomId, current }) {
                   className={`flex flex-col items-center gap-1 disabled:opacity-60`}
                 >
                   <div
-                    className={`h-12 w-12 rounded-xl ring-2 ${
+                    className={`h-14 w-14 rounded-xl ring-2 ${
                       current === bg.id ? "ring-neon-violet" : "ring-white/10"
                     }`}
                     style={{ background: bg.css }}
                   />
-                  <span className="text-[9px] text-mist">{bg.name}</span>
+                  <span className="text-center text-[8px] leading-tight text-mist">{bg.name}</span>
                 </button>
               ))}
             </div>
