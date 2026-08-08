@@ -83,22 +83,23 @@ export default function FramesShopPage() {
               key={item.id}
               className={`flex flex-col items-center rounded-xl bg-panel p-3 ring-1 ${style.ring} ${style.glow}`}
             >
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-full text-2xl ring-4 ring-offset-2 ring-offset-panel"
-                style={{
-                  background: item.free ? "rgba(255,255,255,0.05)" : item.gradient,
-                  ringColor: "transparent",
-                }}
-              >
-                {item.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.image} alt={item.name} className="h-14 w-14 object-contain" draggable={false} />
-                ) : item.free ? (
-                  "🚫"
-                ) : (
-                  item.emoji
-                )}
-              </div>
+              {item.image ? (
+                // Real frame art: show it on its own square panel (like the
+                // reference sheet) instead of stuffing it inside a round
+                // gradient badge — that circular backdrop is what was making
+                // every frame look like a plain round icon in the shop.
+                <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-void/40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.image} alt={item.name} className="h-16 w-16 object-contain" draggable={false} />
+                </div>
+              ) : (
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-full text-2xl"
+                  style={{ background: item.free ? "rgba(255,255,255,0.05)" : item.gradient }}
+                >
+                  {item.free ? "🚫" : item.emoji}
+                </div>
+              )}
               <p className="mt-2 line-clamp-1 text-center text-[11px] font-semibold text-ink">{item.name}</p>
               <p className="text-[9px] uppercase tracking-wide text-mist">{style.label}</p>
               {!item.free && (

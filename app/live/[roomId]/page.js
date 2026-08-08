@@ -11,12 +11,43 @@ import { createAgoraClient, createMicAndCameraTracks, fetchAgoraToken, AGORA_APP
 import LiveChat from "@/components/LiveChat";
 import GiftBar from "@/components/GiftBar";
 import GiftFeed from "@/components/GiftFeed";
+import GiftRideBanner from "@/components/GiftRideBanner";
 import FloatingHearts from "@/components/FloatingHearts";
 import EntranceBanner from "@/components/EntranceBanner";
+import EventBanner from "@/components/EventBanner";
 import BackgroundPicker from "@/components/BackgroundPicker";
 import AddGuestButton from "@/components/AddGuestButton";
 import CoHostInvitePrompt from "@/components/CoHostInvitePrompt";
 import FollowButton from "@/components/FollowButton";
+import NotificationBell from "@/components/NotificationBell";
+import RoomMoreMenu from "@/components/RoomMoreMenu";
+
+// getUserMedia/Agora surface a "PERMISSION_DENIED" / NotAllowedError when
+// the browser itself has camera+mic access blocked for this site — that's
+// not something a retry can fix on its own, so it gets its own message
+// telling the person to unblock it in their browser first. Every other
+// failure (no device found, device already in use by another app, etc.)
+// falls back to Agora's own message.
+function describeMediaError(err) {
+  const code = err?.code || "";
+  const name = err?.name || "";
+  const message = err?.message || "";
+  if (
+    code === "PERMISSION_DENIED" ||
+    name === "NotAllowedError" ||
+    message.includes("NotAllowedError") ||
+    message.includes("Permission denied")
+  ) {
+    return "Camera & microphone access is blocked for this site. Open your browser's site settings, allow Camera and Microphone, then come back and try again.";
+  }
+  if (code === "DEVICE_NOT_FOUND" || name === "NotFoundError") {
+    return "No camera or microphone was found on this device.";
+  }
+  if (code === "NOT_READABLE" || name === "NotReadableError") {
+    return "Your camera or microphone is already being used by another app. Close it and try again.";
+  }
+  return `Could not start your camera/microphone (${message || code || "unknown error"}).`;
+}
 
 // Video stage always has two named slots: "primary" (the host) and
 // "secondary" (the co-host, only shown once someone accepts an invite).
@@ -34,6 +65,7 @@ export default function LiveRoomPage() {
   const [joined, setJoined] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [error, setError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
   const [showGifts, setShowGifts] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
   const [viewerCount, setViewerCount] = useState(0);
@@ -163,6 +195,8 @@ export default function LiveRoomPage() {
   // Publish (or unpublish) my own camera whenever I go on/off stage —
   // covers both the original host and someone who just accepted a
   // co-host invite, without touching the channel connection above.
+  // `retryKey` lets the "Try again" button on a failed camera/mic prompt
+  // re-run this without the person having to leave and rejoin the stage.
   useEffect(() => {
     const client = clientRef.current;
     if (!client || !joined) return;
@@ -187,11 +221,10 @@ export default function LiveRoomPage() {
           await client.publish([camTrack, micTrack]);
         } catch (err) {
           console.error(err);
-          const detail = err?.message || err?.code || "unknown error";
           // One combined permission request means we can't always tell
           // which device it was, so the message covers both rather than
           // wrongly blaming the camera when it was actually the mic.
-          setError(`Could not start your camera/microphone (${detail}).`);
+          setError(describeMediaError(err));
         }
       } else if (!onStage && localTracksRef.current.cam) {
         const { cam, mic } = localTracksRef.current;
@@ -208,7 +241,7 @@ export default function LiveRoomPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onStage, joined]);
+  }, [onStage, joined, retryKey]);
 
   async function handleEndOrLeave() {
     if (isHost) await endRoom(roomId);
@@ -283,7 +316,7 @@ export default function LiveRoomPage() {
             <FollowButton target={{ uid: room.hostUid, displayName: room.hostName }} />
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto pl-2">
           {isHost && (
             <AddGuestButton
               roomId={String(roomId)}
@@ -293,6 +326,8 @@ export default function LiveRoomPage() {
             />
           )}
           {isHost && <BackgroundPicker roomId={String(roomId)} current={room.background} />}
+          <RoomMoreMenu />
+          <NotificationBell />
           <button
             onClick={handleShare}
             aria-label="Share this room"
@@ -317,11 +352,32 @@ export default function LiveRoomPage() {
           ⚠️ NEXT_PUBLIC_AGORA_APP_ID is not set in .env.local — video won't connect until it is.
         </p>
       )}
-      {error && <p className="mx-4 rounded-lg bg-panel p-3 text-xs text-neon-pink">{error}</p>}
+      {error && (
+        <div className="mx-4 rounded-lg bg-panel p-3 text-xs text-neon-pink">
+          <p>{error}</p>
+          {onStage && (
+            <button
+              onClick={() => {
+                setError("");
+                setRetryKey((k) => k + 1);
+              }}
+              className="mt-2 rounded-full bg-neon-pink/20 px-3 py-1 text-[11px] font-bold text-neon-pink"
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      )}
+
+      <EventBanner />
 
       {/* Video stage — two slots, side by side once a co-host joins */}
-      <div className="relative mx-4 aspect-[9/16] max-h-[52vh] overflow-hidden rounded-2xl bg-panel">
+      <div className="relative mx-4 mt-2 aspect-[9/16] max-h-[52vh] overflow-hidden rounded-2xl bg-panel">
+        <span className="absolute left-1/2 top-2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-ink backdrop-blur">
+          👀 {viewerCount}
+        </span>
         <GiftFeed roomId={String(roomId)} />
+        <GiftRideBanner roomId={String(roomId)} />
         <EntranceBanner roomId={String(roomId)} />
         <FloatingHearts hearts={hearts} />
 

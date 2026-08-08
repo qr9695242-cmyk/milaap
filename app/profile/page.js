@@ -8,12 +8,14 @@ import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { vipLevelForSpend } from "@/lib/vip";
 import { hostLevelForDiamonds } from "@/lib/hostLevel";
+import { giftLevelForSpend, nextGiftLevel, giftLevelProgress } from "@/lib/giftLevel";
 import { effectiveRole } from "@/lib/roles";
 import { findItem } from "@/lib/decorations";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
 import FramedAvatar from "@/components/FramedAvatar";
+import GiftLevelBadge from "@/components/GiftLevelBadge";
 import { useInstall, isIOS } from "@/lib/InstallContext";
 
 export default function ProfilePage() {
@@ -47,6 +49,9 @@ export default function ProfilePage() {
   const isSuperAdmin = role === "superadmin";
   const vipTier = vipLevelForSpend(profile?.totalRechargedRs);
   const hostTier = hostLevelForDiamonds(profile?.diamonds);
+  const giftTier = giftLevelForSpend(profile?.totalGiftedCoins);
+  const nextGift = nextGiftLevel(profile?.totalGiftedCoins);
+  const giftProgress = giftLevelProgress(profile?.totalGiftedCoins);
   const equippedVehicle = profile?.equippedVehicle ? findItem("vehicle", profile.equippedVehicle) : null;
 
   return (
@@ -54,7 +59,7 @@ export default function ProfilePage() {
       <section className="bg-glow-gradient px-5 pb-8 pt-10">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <FramedAvatar frameId={profile?.equippedFrame} name={profile?.displayName} size={64} />
+            <FramedAvatar frameId={profile?.equippedFrame} name={profile?.displayName} photoURL={profile?.avatar} size={64} />
             <div>
               <p className="font-display text-lg font-extrabold text-ink">
                 {profile?.displayName || "User"} {equippedVehicle && <span title={equippedVehicle.name}>{equippedVehicle.emoji}</span>}
@@ -67,14 +72,22 @@ export default function ProfilePage() {
                 <span className="inline-block rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-ink">
                   {hostTier.icon} {hostTier.name}
                 </span>
+                <GiftLevelBadge totalGiftedCoins={profile?.totalGiftedCoins} />
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/profile/edit"
+              className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-ink"
+            >
+              Edit
+            </Link>
             <NotificationBell />
             <ThemeToggle />
           </div>
         </div>
+        {profile?.bio && <p className="mt-3 text-xs text-ink/80">{profile.bio}</p>}
       </section>
 
       <section className="mx-5 -mt-4 flex divide-x divide-white/5 rounded-xl bg-panel ring-1 ring-white/5">
@@ -96,6 +109,31 @@ export default function ProfilePage() {
         </div>
       </section>
 
+      <section className="mx-5 mt-4 rounded-xl bg-panel p-4 ring-1 ring-white/5">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-ink">Gift Level</p>
+          <p className="text-[10px] text-mist">
+            ● {profile?.totalGiftedCoins ?? 0} gifted
+          </p>
+        </div>
+        <div className="mt-2">
+          <GiftLevelBadge totalGiftedCoins={profile?.totalGiftedCoins} />
+        </div>
+        <div
+          className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-panel2 shadow-3d-btn-active"
+        >
+          <div
+            className="h-full rounded-full transition-[width] duration-500"
+            style={{ width: `${Math.round(giftProgress * 100)}%`, backgroundImage: giftTier.gradient }}
+          />
+        </div>
+        <p className="mt-1.5 text-[10px] text-mist">
+          {nextGift
+            ? `Lv.${nextGift.level} tak ${Math.max(0, nextGift.minCoins - (profile?.totalGiftedCoins ?? 0))} coins ka gift aur bhejna hai`
+            : "Max level pahunch gaye — Immortal Patron! 🏆"}
+        </p>
+      </section>
+
       <section className="mx-5 mt-6 divide-y divide-white/5 rounded-xl bg-panel ring-1 ring-white/5">
         {[
           { label: "Wallet & Recharge", href: "/wallet" },
@@ -108,6 +146,7 @@ export default function ProfilePage() {
           { label: "Frames", href: "/profile/frames" },
           { label: "Vehicles / Cars", href: "/profile/vehicles" },
           { label: "Friends / CP", href: "/profile/friends" },
+          { label: "Settings", href: "/settings" },
         ].map((item) =>
           item.href ? (
             <Link

@@ -8,6 +8,7 @@ import { vipLevelForSpend } from "@/lib/vip";
 import BottomNav from "@/components/BottomNav";
 import HostLevelBadge from "@/components/HostLevelBadge";
 import VipBadge from "@/components/VipBadge";
+import GiftLevelBadge from "@/components/GiftLevelBadge";
 
 export default function LeaderboardPage() {
   const { user, loading } = useAuth();
@@ -64,7 +65,10 @@ export default function LeaderboardPage() {
                   {tab === "earners" ? (
                     <HostLevelBadge diamonds={r.diamonds} compact />
                   ) : (
-                    <VipBadge vipLevel={r.vipLevel} compact />
+                    <>
+                      <VipBadge vipLevel={r.vipLevel} compact />
+                      <GiftLevelBadge totalGiftedCoins={r.totalGiftedCoins} compact />
+                    </>
                   )}
                 </div>
                 <p className="text-xs text-mist">

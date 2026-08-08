@@ -121,8 +121,13 @@ export default function PublicProfilePage() {
 
       <section className="mx-5 mt-4 flex items-center gap-4">
         <div className="relative shrink-0">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 text-2xl font-bold text-ink ring-2 ring-white/40">
-            {(target.displayName || "U").charAt(0).toUpperCase()}
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white/20 text-2xl font-bold text-ink ring-2 ring-white/40">
+            {target.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={target.avatar} alt={target.displayName || "avatar"} className="h-full w-full object-cover" />
+            ) : (
+              (target.displayName || "U").charAt(0).toUpperCase()
+            )}
           </div>
           <OnlineDot lastActiveAt={target.lastActiveAt} className="absolute bottom-0 right-0" />
         </div>
@@ -136,6 +141,14 @@ export default function PublicProfilePage() {
         </div>
         <FollowButton target={{ uid, displayName: target.displayName, avatar: target.avatar }} />
       </section>
+
+      {(target.bio || target.address) && (
+        <section className="mx-5 mt-3">
+          {target.bio && <p className="text-xs text-ink/80">{target.bio}</p>}
+          {target.address && <p className="mt-1 text-[11px] text-mist">📍 {target.address}</p>}
+        </section>
+      )}
+
 
       <section className="mx-5 mt-3 flex gap-2">
         <button

@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/AuthContext";
 import { ThemeProvider } from "@/lib/ThemeContext";
 import { InstallProvider } from "@/lib/InstallContext";
 import InstallPrompt from "@/components/InstallPrompt";
+import UpdateAvailableBanner from "@/components/UpdateAvailableBanner";
 
 const display = Manrope({
   subsets: ["latin"],
@@ -52,6 +53,7 @@ export default function RootLayout({ children }) {
             <InstallProvider>
               {children}
               <InstallPrompt />
+              <UpdateAvailableBanner />
             </InstallProvider>
           </AuthProvider>
         </ThemeProvider>

@@ -11,6 +11,7 @@ import SeatGrid from "@/components/SeatGrid";
 import LiveChat from "@/components/LiveChat";
 import GiftBar from "@/components/GiftBar";
 import GiftFeed from "@/components/GiftFeed";
+import GiftRideBanner from "@/components/GiftRideBanner";
 import EntranceBanner from "@/components/EntranceBanner";
 import BackgroundPicker from "@/components/BackgroundPicker";
 
@@ -192,6 +193,7 @@ export default function AudioRoomPage() {
 
       <div className="relative mt-4">
         <GiftFeed roomId={String(roomId)} />
+        <GiftRideBanner roomId={String(roomId)} />
         <EntranceBanner roomId={String(roomId)} />
         <SeatGrid seats={room.seats || []} myUid={user.uid} onSeatTap={handleSeatTap} />
       </div>
