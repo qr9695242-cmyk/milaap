@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // --- Simplified Ludo rules --------------------------------------------
 // 4 players around one 52-cell shared ring. Each token's progress is a
@@ -35,6 +36,7 @@ function ringPosition(player, steps) {
 }
 
 export default function LudoGamePage() {
+  const router = useRouter();
   const [numPlayers, setNumPlayers] = useState(4);
   const [tokens, setTokens] = useState(initialTokens());
   const [turn, setTurn] = useState(0);
@@ -154,6 +156,33 @@ export default function LudoGamePage() {
           </div>
         </div>
       </section>
+
+      {/* GAME MODE SELECTOR */}
+      {!winner && tokens.every(t => t.every(s => s === 0)) && (
+        <div className="mx-5 mt-4 flex flex-col gap-2">
+          <button
+            onClick={() => setNumPlayers(2)}
+            className="rounded-lg bg-panel2 px-4 py-2 text-xs font-semibold text-mist ring-1 ring-white/5"
+          >
+            🎮 Local - 2 Players
+          </button>
+          <button
+            onClick={() => {
+              setNumPlayers(4);
+              resetGame();
+            }}
+            className="rounded-lg bg-panel2 px-4 py-2 text-xs font-semibold text-mist ring-1 ring-white/5"
+          >
+            🎮 Local - 4 Players
+          </button>
+          <button
+            onClick={() => router.push("/games/ludo/multiplayer")}
+            className="rounded-lg bg-glow-gradient px-4 py-3 text-xs font-semibold text-ink hover:shadow-glow transition"
+          >
+            🌐 Online - Play with Friends (Betting)
+          </button>
+        </div>
+      )}
 
       {!winner && (
         <div className="mx-5 mt-4 flex items-center justify-between rounded-xl bg-panel px-4 py-3 ring-1 ring-white/5">
