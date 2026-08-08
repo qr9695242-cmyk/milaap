@@ -13,7 +13,7 @@ export default function PkBattlePanel({ room, roomId, isHost, activeBattle }) {
     if (!showPicker) return;
     const unsub = listenActiveRooms((rooms) => {
       setOtherLiveRooms(
-        rooms.filter((r) => r.type === "live" && r.id !== roomId && r.hostUid !== room.hostUid)
+        rooms.filter((r) => r.type === "audio" && r.id !== roomId && r.hostUid !== room.hostUid)
       );
     });
     return () => unsub();
